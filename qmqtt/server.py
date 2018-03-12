@@ -212,7 +212,7 @@ class Client:
 
     async def handle_PUBREC(self, flags, payload):
         pid = payload[0] * 256 + payload[1]
-        pubrel = b'\x60\x02' + payload
+        pubrel = b'\x62\x02' + payload
         self._unack[pid] = pubrel
         await loop.sock_sendall(self.s, pubrel)
 
