@@ -93,7 +93,7 @@ class Client:
             fixheader_1, fixheader_2,
             varheader_topic_prefix, varheader_topic, varheader_id,
             message])
-        logger.debug("Sending PUBLISH. topic:%s pid:%d", topic, pid)
+        logger.debug("Sending PUBLISH. topic:%s", topic)
         if qos > 0:
             self._unack[pid] = packet
         await loop.sock_sendall(self.s, packet)
@@ -107,10 +107,17 @@ class Client:
         except Exception as e:
            logger.warning("client error %s", e)
         finally:
+            self.close()
+
+    def close(self):
+        try:
             clients.remove(self)
-            for topic in self._subscribe_topic:
-                del subscriptions[topic][self]
-            self.s.close()
+        except ValueError:
+            pass
+        for topic in self._subscribe_topic:
+            del subscriptions[topic][self]
+        self.s.close()
+
 
     async def wait_connect(self):
         r = await asyncio.wait_for(loop.sock_recv(self.s, 1), self.timeout)
@@ -264,9 +271,14 @@ async def forwarder():
         message, topic, qos = await messages.get()
         for t in subscriptions:
             if t == topic:
-                for c, q in subscriptions[t].items():
+                c2qos = subscriptions[t].copy()
+                for c, q in c2qos.items():
                     if qos <= q:
-                        asyncio.ensure_future(c.send(message, topic, qos))
+                        try:
+                            await c.send(message, topic, qos)
+                        except Exception as e:
+                            logger.warning("Sending message error: %s", e)
+                            c.close()
 
 
 async def server(host="localhost", port=1883, timeout=None):
