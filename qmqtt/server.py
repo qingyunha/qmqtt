@@ -54,6 +54,7 @@ class Client:
         self.s = socket
         self.s.setblocking(False)
         self.timeout = timeout
+        self.client_id = None
         self._pids = []
         self._unack = {}
         self._seen_qos2 = []
@@ -93,7 +94,7 @@ class Client:
             fixheader_1, fixheader_2,
             varheader_topic_prefix, varheader_topic, varheader_id,
             message])
-        logger.debug("Sending PUBLISH. topic:%s", topic)
+        logger.debug("[%s] Sending PUBLISH. topic:%s", self.client_id, topic)
         if qos > 0:
             self._unack[pid] = packet
         await loop.sock_sendall(self.s, packet)
@@ -103,9 +104,9 @@ class Client:
             if await self.wait_connect():
                 await self.process()
         except asyncio.TimeoutError:
-           logger.warning("client timeout")
+            logger.warning("client timeout")
         except Exception as e:
-           logger.warning("client error %s", e)
+            logger.warning("[%s] client error: %s", self.client_id, e)
         finally:
             self.close()
 
@@ -122,7 +123,7 @@ class Client:
     async def wait_connect(self):
         r = await asyncio.wait_for(loop.sock_recv(self.s, 1), self.timeout)
         if r == b'':
-            logger.info("client close connection")
+            logger.info("[%s] client close connection", self.client_id)
             return False
         r = r[0]
         type = (r & 0xf0) >> 4
@@ -138,8 +139,20 @@ class Client:
             if r < 128:
                 break
         remaining_length = remaining_length_decode(bytes(l))
+        if remaining_length < 10:
+            raise Exception("CONNECT packet too small")
         payload = await loop.sock_recv(self.s, remaining_length)
-        logger.info("New client connected")
+        if payload[:6] != b"\x00\x04MQTT":
+            raise Exception("Protocol name not match")
+        if payload[6] != 4:
+            logger.warning("unacceptable protocol level %d", payload[6])
+            return False
+        connect_flags = payload[7]
+        kill_alive = payload[8]*256 + payload[9]
+        client_id_len = payload[10]*256 + payload[11]
+        client_id = payload[12:12+client_id_len].decode('utf8')
+        self.client_id = client_id
+        logger.info("New client %s connected", client_id)
         connack = b'\x20\x02\x00\x00'
         await loop.sock_sendall(self.s, connack)
         return True
@@ -149,7 +162,7 @@ class Client:
             r = await loop.sock_recv(self.s, 1)
             if r == b'':
                 self.s.close()
-                logger.info("client close connection")
+                logger.info("[%s] client close connection", self.client_id)
                 return False
             r = r[0]
             type = (r & 0xf0) >> 4
@@ -177,7 +190,7 @@ class Client:
             l = payload[0] * 256 + payload[1]
             topic = payload[2:2+l].decode('utf8')
             qos = payload[2+l]
-            logger.info("subscribe %s %d", topic, qos)
+            logger.info("[%s] subscribe %s %d", self.client_id, topic, qos)
             topics.append((topic, qos))
             subscriptions[topic][self] = qos
             self._subscribe_topic.append(topic)
@@ -210,7 +223,7 @@ class Client:
                     await messages.put((message, topic, qos))
                 pubrec = b'\x50\x02' + pid.to_bytes(2, 'big')
                 await loop.sock_sendall(self.s, pubrec)
-        logger.debug("recv PUBLISH topic:%s pid:%d", topic, pid)
+        logger.debug("[%s] recv PUBLISH topic:%s pid:%d", self.client_id, topic, pid)
 
     async def handle_PUBACK(self, flags, payload):
         pid = payload[0] * 256 + payload[1]
