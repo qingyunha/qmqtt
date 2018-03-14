@@ -60,6 +60,10 @@ class Client:
         self._seen_qos2 = []
         self._subscribe_topic = []
 
+        self.keepalive = 0
+        self._alive = False
+        self._stop = False
+
     def gen_packet_id(self):
         l = len(self._pids)
         if l == 0:
@@ -108,17 +112,18 @@ class Client:
         except Exception as e:
             logger.warning("[%s] client error: %s", self.client_id, e)
         finally:
-            self.close()
+            try:
+                clients.remove(self)
+            except ValueError:
+                pass
+            for topic in self._subscribe_topic:
+                del subscriptions[topic][self]
+                self.s.close()
 
-    def close(self):
-        try:
-            clients.remove(self)
-        except ValueError:
-            pass
-        for topic in self._subscribe_topic:
-            del subscriptions[topic][self]
+    def stop(self):
+        logger.info("[%s] stopping client", self.client_id)
         self.s.close()
-
+        self._stop = True
 
     async def wait_connect(self):
         r = await asyncio.wait_for(loop.sock_recv(self.s, 1), self.timeout)
@@ -148,17 +153,19 @@ class Client:
             logger.warning("unacceptable protocol level %d", payload[6])
             return False
         connect_flags = payload[7]
-        kill_alive = payload[8]*256 + payload[9]
+        self.keepalive = payload[8]*256 + payload[9]
+        if self.keepalive > 0:
+            asyncio.ensure_future(self.do_keepalive())
         client_id_len = payload[10]*256 + payload[11]
         client_id = payload[12:12+client_id_len].decode('utf8')
         self.client_id = client_id
-        logger.info("New client %s connected", client_id)
+        logger.info("New client %s connected. connect_flags:%s", client_id, bin(connect_flags))
         connack = b'\x20\x02\x00\x00'
         await loop.sock_sendall(self.s, connack)
         return True
 
     async def process(self):
-        while True:
+        while not self._stop:
             r = await loop.sock_recv(self.s, 1)
             if r == b'':
                 self.s.close()
@@ -180,6 +187,7 @@ class Client:
             else:
                 payload = b''
 
+            self._alive = True
             await getattr(self, 'handle_' + PACKET_NAMES[type])(flags, payload)
 
     async def handle_SUBSCRIBE(self, flags, payload):
@@ -252,6 +260,14 @@ class Client:
 
     async def handle_PINGREQ(self, *_):
         await loop.sock_sendall(self.s, b'\xd0\x00')
+
+    async def do_keepalive(self):
+        while not self._stop:
+            await asyncio.sleep(self.keepalive * 1.5)
+            if not self._alive:
+                logger.info("[%s] not alive", self.client_id)
+                self.stop()
+            self._alive = False
 
 
 def remaining_length_decode(x):
