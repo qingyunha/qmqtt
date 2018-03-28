@@ -1,0 +1,12 @@
+Metadata-Version: 1.0
+Name: qmqtt
+Version: 0.1.0
+Summary: A simple and complete implementation of MQTT protocol
+Home-page: https://github.com/qingyunha/qmqtt
+Author: Tao Qingyun
+Author-email: 84576765@qq.com
+License: UNKNOWN
+Description-Content-Type: UNKNOWN
+Description: UNKNOWN
+Keywords: MQTT asyncio
+Platform: UNKNOWN

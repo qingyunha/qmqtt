@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns# article: http://ogp.me/ns/article# " lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ath10k firmware crashed | Qing Yun</title>
+<link href="../../assets/css/all-nocdn.css" rel="stylesheet" type="text/css">
+<meta name="theme-color" content="#5670d4">
+<meta name="generator" content="Nikola (getnikola.com)">
+<link rel="alternate" type="application/rss+xml" title="RSS" href="../../rss.xml">
+<link rel="canonical" href="http://ls-a.me/posts/ath10k-firmware-crashed/">
+<!--[if lt IE 9]><script src="../../assets/js/html5.js"></script><![endif]--><meta name="author" content="Tao Qingyun">
+<link rel="prev" href="../dns/" title="理解DNS" type="text/html">
+<meta property="og:site_name" content="Qing Yun">
+<meta property="og:title" content="ath10k firmware crashed">
+<meta property="og:url" content="http://ls-a.me/posts/ath10k-firmware-crashed/">
+<meta property="og:description" content='前些天，我的电脑总是时不时的断网，每次我得重启dhcpcd服务。 我的系统是
+Arch Linux，网络用的是dhcpcd＋wpa_supplicant。首先确定的是网络本身没有
+问题。 dmesg看了一眼，发现这样的信息" ath10k_pci 0000:3a:00.0:
+firmware crashed!"。网上搜了一下，了 解到aht10k是一个无线网卡驱动，专
+为Qualcom Ather'>
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2018-03-26T21:45:15+08:00">
+</head>
+<body>
+<a href="#content" class="sr-only sr-only-focusable">Skip to main content</a>
+
+<!-- Menubar -->
+
+<nav class="navbar navbar-inverse navbar-static-top"><div class="container">
+<!-- This keeps the margins nice -->
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-navbar" aria-controls="bs-navbar" aria-expanded="false">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="http://ls-a.me/">
+
+                <span id="blog-title">Qing Yun</span>
+            </a>
+        </div>
+<!-- /.navbar-header -->
+        <div class="collapse navbar-collapse" id="bs-navbar" aria-expanded="false">
+            <ul class="nav navbar-nav">
+<li>
+<a href="../../archive.html">Archive</a>
+                </li>
+<li>
+<a href="../../categories/">Tags</a>
+                </li>
+<li>
+<a href="../../rss.xml">RSS feed</a>
+
+                
+            </li>
+</ul>
+<ul class="nav navbar-nav navbar-right">
+<li>
+    <a href="index.org" id="sourcelink">Source</a>
+    </li>
+
+                
+            </ul>
+</div>
+<!-- /.navbar-collapse -->
+    </div>
+<!-- /.container -->
+</nav><!-- End of Menubar --><div class="container" id="content" role="main">
+    <div class="body-content">
+        <!--Body content-->
+        <div class="row">
+            
+            
+<article class="post-text h-entry hentry postpage" itemscope="itemscope" itemtype="http://schema.org/Article"><header><h1 class="p-name entry-title" itemprop="headline name"><a href="." class="u-url">ath10k firmware crashed</a></h1>
+
+        <div class="metadata">
+            <p class="byline author vcard"><span class="byline-name fn" itemprop="author">
+                    Tao Qingyun
+            </span></p>
+            <p class="dateline"><a href="." rel="bookmark"><time class="published dt-published" datetime="2018-03-26T21:45:15+08:00" itemprop="datePublished" title="2018-03-26 21:45">2018-03-26 21:45</time></a></p>
+                <p class="commentline">
+        
+    <a href="#disqus_thread" data-disqus-identifier="cache/posts/ath10k-firmware-crashed.html">Comments</a>
+
+
+            
+        </p>
+<p class="sourceline"><a href="index.org" class="sourcelink">Source</a></p>
+
+        </div>
+        
+
+    </header><div class="e-content entry-content" itemprop="articleBody text">
+    <p>
+前些天，我的电脑总是时不时的断网，每次我得重启dhcpcd服务。 我的系统是
+Arch Linux，网络用的是dhcpcd＋wpa_supplicant。首先确定的是网络本身没有
+问题。 dmesg看了一眼，发现这样的信息" ath10k_pci 0000:3a:00.0:
+firmware crashed!"。网上搜了一下，了 解到aht10k是一个无线网卡驱动，专
+为Qualcom Atheros QCA988x（高通）系列， 详情见这里
+<a href="https://wireless.wiki.kernel.org/en/users/drivers/ath10k">https://wireless.wiki.kernel.org/en/users/drivers/ath10k</a>。
+</p>
+
+<blockquote>
+<p>
+$ lspci
+……
+3a:00.0 Network controller: Qualcomm Atheros QCA6174 802.11ac Wireless Network Adapter (rev 32)
+3b:00.0 Unassigned class [ff00]: Realtek Semiconductor Co., Ltd. RTS525A PCI Express Card Reader (rev 01)
+3c:00.0 Non-Volatile memory controller: Toshiba America Info Systems XG4 NVMe SSD Controller (rev 01)
+</p>
+</blockquote>
+
+<p>
+可以看到我的网卡正是Qualcom Atheros，由此可以确定断网问题和ath10k有关。
+</p>
+
+<p>
+升级firemare可能能解决问题，升级方法也很简单，只要直接替换对应的firmware镜像
+文件就可以了。它在 <a href="https://github.com/kvalo/ath10k-firmware">ath10-firmware.git</a> 中开发，最终合并到 <a href="https://git.kernel.org/cgit/linux/kernel/git/firmware/linux-firmware.git/">linux-firmware.git</a> 中，我系
+统现在使用的版本是20180119.2a713be-1，这已经是Arch的最新版了。我需要从
+它的git库中下载最新的。但是这个库看起来非常大，包含了各种设备的
+firmware，而我只需要其中的一个。还好 <a href="https://git.kernel.org%20">https://git.kernel.org%20</a> 提供了一种
+plan模式，你可以直接用HTTP下载单个文件。打开我设备型号对应的目录：
+</p>
+
+<blockquote>
+<p>
+<a href="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/ath10k/QCA6174/hw3.0/">https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/ath10k/QCA6174/hw3.0/</a>
+<i>ath10k/QCA6174/hw3.0</i>
+../
+board-2.bin
+board.bin
+firmware-4.bin
+firmware-6.bin
+notice_ath10k_firmware-4.txt
+notice_ath10k_firmware-6.txt
+</p>
+</blockquote>
+
+<p>
+还不只一个文件，那就整个目录替换吧。一个一个下又点麻烦，用wget。
+</p>
+
+<blockquote>
+<p>
+wget -c -e robots=off -r -l1 –debug <a href="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/ath10k/QCA6174/hw3.0/">https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/ath10k/QCA6174/hw3.0/</a>
+</p>
+</blockquote>
+
+<p>
+开始时一值只能下到一个index.html，看了一边手册，确信-r是递归下载，也没
+找到其他又用的选项。打开debug模式，原来是wget遵循了robots规则，而
+<a href="https://git.kernel.org">https://git.kernel.org</a> 禁止一切爬虫。然后我在wget的info找到了关闭它的
+方法 <code>robots=off</code> 。而这时我的网络已经快崩溃了，重启一次dhcpcd只能维持不到
+半分钟，还好wget被设计成在慢速或不可靠网络下也保持健壮性，失败的时候会重
+连。这样在这种艰苦的条件下，这几个文件终于被下载下来了。
+</p>
+
+<p>
+接着就是备份原来的目录，复制新的firmware文件。reboot。一切恢复正常。
+</p>
+
+<p>
+firmware crashed 的原因应该是我最近一次系统升级导致的，内核升级到
+4.15.10,ath10k驱动和firmware不兼容导致的。
+</p>
+    </div>
+    <aside class="postpromonav"><nav><ul class="pager hidden-print">
+<li class="previous">
+                <a href="../dns/" rel="prev" title="理解DNS">Previous post</a>
+            </li>
+        </ul></nav></aside><section class="comments hidden-print"><h2>Comments</h2>
+        
+        
+        <div id="disqus_thread"></div>
+        <script>
+        var disqus_shortname ="ls-a",
+            disqus_url="http://ls-a.me/posts/ath10k-firmware-crashed/",
+        disqus_title="ath10k firmware crashed",
+        disqus_identifier="cache/posts/ath10k-firmware-crashed.html",
+        disqus_config = function () {
+            this.language = "en";
+        };
+        (function() {
+            var dsq = document.createElement('script'); dsq.async = true;
+            dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script><noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a>
+</noscript>
+    <a href="https://disqus.com" class="dsq-brlink" rel="nofollow">Comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+        </section></article><script>var disqus_shortname="ls-a";(function(){var a=document.createElement("script");a.async=true;a.src="https://"+disqus_shortname+".disqus.com/count.js";(document.getElementsByTagName("head")[0]||document.getElementsByTagName("body")[0]).appendChild(a)}());</script>
+</div>
+        <!--End of body content-->
+
+        <footer id="footer">
+            Contents © 2018         <a href="mailto:845767657@qq.com">Tao Qingyun</a> - Powered by         <a href="https://getnikola.com" rel="nofollow">Nikola</a>         
+            
+        </footer>
+</div>
+</div>
+
+
+            <script src="../../assets/js/all-nocdn.js"></script><script>$('a.image-reference:not(.islink) img:not(.islink)').parent().colorbox({rel:"gal",maxWidth:"100%",maxHeight:"100%",scalePhotos:true});</script><!-- fancy dates --><script>
+    moment.locale("en");
+    fancydates(0, "YYYY-MM-DD HH:mm");
+    </script><!-- end fancy dates -->
+</body>
+</html>

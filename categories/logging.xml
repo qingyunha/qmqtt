@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="../assets/xml/rss.xsl" media="all"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Qing Yun (Posts about logging)</title><link>http://ls-a.me/</link><description></description><atom:link href="http://ls-a.me/categories/logging.xml" rel="self" type="application/rss+xml"></atom:link><language>en</language><copyright>Contents © 2018 &lt;a href="mailto:845767657@qq.com"&gt;Tao Qingyun&lt;/a&gt; </copyright><lastBuildDate>Mon, 26 Mar 2018 13:39:23 GMT</lastBuildDate><generator>Nikola (getnikola.com)</generator><docs>http://blogs.law.harvard.edu/tech/rss</docs><item><title>python logging</title><link>http://ls-a.me/posts/python-logging/</link><dc:creator>Tao Qingyun</dc:creator><description>&lt;div&gt;&lt;p&gt;日志对程序的调试和问题的发现很有帮助。如何设置合适的日志需要需要一些考虑。&lt;/p&gt;
+&lt;p&gt;以python2.7标准库logging为例。&lt;/p&gt;
+&lt;p&gt;logging分有多种级别:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;NOTSET&lt;/li&gt;
+&lt;li&gt;DEBUG&lt;/li&gt;
+&lt;li&gt;INFO&lt;/li&gt;
+&lt;li&gt;WARNING&lt;/li&gt;
+&lt;li&gt;ERROR&lt;/li&gt;
+&lt;li&gt;CRITICAL&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;一个应用中可以有多个logger对象，比如每个module一个logger。
+不同logger对象可以设置不同的级别，只有大于该级别的log事件才会被记录。&lt;/p&gt;
+&lt;p&gt;log的记录和处理是分开的，你可以把log简单的打印出来，写到文件中，甚至遇到高级别log事件时，直接给你发邮件。这是由&lt;code&gt;logging.Handler&lt;/code&gt;对象来处理，你可以为一个logger添加多个handler，同时handler也是分级别的，这样你就可以对不同级别的log做出不同的处理了。&lt;/p&gt;
+&lt;p&gt;每个Logger都有一个唯一的名字，通常用&lt;code&gt;logging.getLogger(__name__)&lt;/code&gt;，这样得到的logger的名字就是当前模块的名字,这样还有一个好处，logger是分层的，比如&lt;code&gt;input&lt;/code&gt;logger就是&lt;code&gt;input.cvs&lt;/code&gt;，&lt;code&gt;input.xls&lt;/code&gt;logger的上层。这与python的模块命名空间一致，以&lt;code&gt;.&lt;/code&gt;做分割。&lt;/p&gt;
+&lt;p&gt;这里的分层还意味着log事件会向上层传递，当然你也可以阻止这个行为，通过设置&lt;code&gt;Logger.propagate&lt;/code&gt;为False。&lt;/p&gt;
+&lt;p&gt;logger，handler，formmater(log的格式)的创建，配置可以直接写在代码中，比如：&lt;/p&gt;
+&lt;pre class="code literal-block"&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;logging&lt;/span&gt;
+
+&lt;span class="c1"&gt;# create logger&lt;/span&gt;
+&lt;span class="n"&gt;logger&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;logging&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;getLogger&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'simple_example'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;logger&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;setLevel&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;logging&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;DEBUG&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# create console handler and set level to debug&lt;/span&gt;
+&lt;span class="n"&gt;ch&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;logging&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;StreamHandler&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="n"&gt;ch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;setLevel&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;logging&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;DEBUG&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# create formatter&lt;/span&gt;
+&lt;span class="n"&gt;formatter&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;logging&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Formatter&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'&lt;/span&gt;&lt;span class="si"&gt;%(asctime)s&lt;/span&gt;&lt;span class="s1"&gt; - &lt;/span&gt;&lt;span class="si"&gt;%(name)s&lt;/span&gt;&lt;span class="s1"&gt; - &lt;/span&gt;&lt;span class="si"&gt;%(levelname)s&lt;/span&gt;&lt;span class="s1"&gt; - &lt;/span&gt;&lt;span class="si"&gt;%(message)s&lt;/span&gt;&lt;span class="s1"&gt;'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# add formatter to ch&lt;/span&gt;
+&lt;span class="n"&gt;ch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;setFormatter&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;formatter&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# add ch to logger&lt;/span&gt;
+&lt;span class="n"&gt;logger&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;addHandler&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;ch&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 'application' code&lt;/span&gt;
+&lt;span class="n"&gt;logger&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;debug&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'debug message'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+
+
+&lt;p&gt;logging模块也提供了从配置文件设置的方法，使用函数&lt;code&gt;fileConfig()&lt;/code&gt;：&lt;/p&gt;
+&lt;pre class="code literal-block"&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;logging&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;logging.config&lt;/span&gt;
+
+&lt;span class="n"&gt;logging&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;config&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;fileConfig&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'logging.conf'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# create logger&lt;/span&gt;
+&lt;span class="n"&gt;logger&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;logging&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;getLogger&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'simpleExample'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 'application' code&lt;/span&gt;
+&lt;span class="n"&gt;logger&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;debug&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'debug message'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;
+
+
+&lt;p&gt;相应的配置文件如下：&lt;/p&gt;
+&lt;pre class="code literal-block"&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;[loggers]&lt;/span&gt;
+&lt;span class="na"&gt;keys&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;root,simpleExample&lt;/span&gt;
+
+&lt;span class="k"&gt;[handlers]&lt;/span&gt;
+&lt;span class="na"&gt;keys&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;consoleHandler&lt;/span&gt;
+
+&lt;span class="k"&gt;[formatters]&lt;/span&gt;
+&lt;span class="na"&gt;keys&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;simpleFormatter&lt;/span&gt;
+
+&lt;span class="k"&gt;[logger_root]&lt;/span&gt;
+&lt;span class="na"&gt;level&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;DEBUG&lt;/span&gt;
+&lt;span class="na"&gt;handlers&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;consoleHandler&lt;/span&gt;
+
+&lt;span class="k"&gt;[logger_simpleExample]&lt;/span&gt;
+&lt;span class="na"&gt;level&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;DEBUG&lt;/span&gt;
+&lt;span class="na"&gt;handlers&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;consoleHandler&lt;/span&gt;
+&lt;span class="na"&gt;qualname&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;simpleExample&lt;/span&gt;
+&lt;span class="na"&gt;propagate&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;0&lt;/span&gt;
+
+&lt;span class="k"&gt;[handler_consoleHandler]&lt;/span&gt;
+&lt;span class="na"&gt;class&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;StreamHandler&lt;/span&gt;
+&lt;span class="na"&gt;level&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;DEBUG&lt;/span&gt;
+&lt;span class="na"&gt;formatter&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;simpleFormatter&lt;/span&gt;
+&lt;span class="na"&gt;args&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;(sys.stdout,)&lt;/span&gt;
+
+&lt;span class="k"&gt;[formatter_simpleFormatter]&lt;/span&gt;
+&lt;span class="na"&gt;format&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;%(asctime)s - %(name)s - %(levelname)s - %(message)s&lt;/span&gt;
+&lt;span class="na"&gt;datefmt&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;
+&lt;/pre&gt;
+
+
+&lt;p&gt;这种方式的好处是把代码与配置分开。logging还提供了第三种方式，&lt;code&gt;dictConfig()&lt;/code&gt;,它通过python的&lt;code&gt;dict&lt;/code&gt;对象来配置。这比第二种方式更进一步，你可以用任何一种配置文件格式，再把它转成符合一定规范的&lt;code&gt;dict&lt;/code&gt;就可以了。&lt;/p&gt;
+&lt;h3&gt;reference&lt;/h3&gt;
+&lt;p&gt;&lt;a href="https://docs.python.org/2/howto/logging.html"&gt;Logging HOWTO&lt;/a&gt;&lt;/p&gt;&lt;/div&gt;</description><category>logging</category><category>python</category><guid>http://ls-a.me/posts/python-logging/</guid><pubDate>Sat, 09 Jul 2016 13:32:25 GMT</pubDate></item></channel></rss>

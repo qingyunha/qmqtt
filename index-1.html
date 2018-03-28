@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns# article: http://ogp.me/ns/article# " lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Nothing is Everything">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qing Yun (old posts, page 1) | Qing Yun</title>
+<link href="assets/css/all-nocdn.css" rel="stylesheet" type="text/css">
+<meta name="theme-color" content="#5670d4">
+<meta name="generator" content="Nikola (getnikola.com)">
+<link rel="alternate" type="application/rss+xml" title="RSS" href="rss.xml">
+<link rel="canonical" href="http://ls-a.me/index-1.html">
+<link rel="prev" href="." type="text/html">
+<!--[if lt IE 9]><script src="assets/js/html5.js"></script><![endif]-->
+</head>
+<body>
+<a href="#content" class="sr-only sr-only-focusable">Skip to main content</a>
+
+<!-- Menubar -->
+
+<nav class="navbar navbar-inverse navbar-static-top"><div class="container">
+<!-- This keeps the margins nice -->
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-navbar" aria-controls="bs-navbar" aria-expanded="false">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="http://ls-a.me/">
+
+                <span id="blog-title">Qing Yun</span>
+            </a>
+        </div>
+<!-- /.navbar-header -->
+        <div class="collapse navbar-collapse" id="bs-navbar" aria-expanded="false">
+            <ul class="nav navbar-nav">
+<li>
+<a href="archive.html">Archive</a>
+                </li>
+<li>
+<a href="categories/">Tags</a>
+                </li>
+<li>
+<a href="rss.xml">RSS feed</a>
+
+                
+            </li>
+</ul>
+<ul class="nav navbar-nav navbar-right"></ul>
+</div>
+<!-- /.navbar-collapse -->
+    </div>
+<!-- /.container -->
+</nav><!-- End of Menubar --><div class="container" id="content" role="main">
+    <div class="body-content">
+        <!--Body content-->
+        <div class="row">
+            
+            
+
+    
+
+
+    
+<div class="postindex">
+    <article class="h-entry post-text"><header><h1 class="p-name entry-title"><a href="posts/python-interpreter/" class="u-url">A Python Interpreter Written in Python</a></h1>
+        <div class="metadata">
+            <p class="byline author vcard"><span class="byline-name fn" itemprop="author">
+                Tao Qingyun
+            </span></p>
+            <p class="dateline"><a href="posts/python-interpreter/" rel="bookmark"><time class="published dt-published" datetime="2016-05-09T11:32:25+08:00" title="2016-05-09 11:32">2016-05-09 11:32</time></a></p>
+        </div>
+    </header><div class="e-content entry-content">
+    <div>
+<p><em>Allison是Dropbox的工程师，在那里她维护着世界上最大的由Python客户组成的网络。在Dropbox之前，她是Recurse Center的导师, 曾在纽约写作。在北美的PyCon做过关于Python内部机制的演讲，并且她喜欢奇怪的bugs。她的博客地址是<a href="http://akaptur.com">akaptur.com</a>.</em></p>
+<h3>Introduction</h3>
+<p>Byterun是一个用Python实现的Python解释器。随着我在Byterun上的工作，我惊讶并很高兴地的发现，这个Python解释器的基础结构可以满足500行的限制。在这一章我们会搞清楚这个解释器的结构，给你足够的知识探索下去。我们的目标不是向你展示解释器的每个细节---像编程和计算机科学其他有趣的领域一样，你可能会投入几年的时间去搞清楚这个主题。</p>
+<p>Byterun是Ned Batchelder和我完成的，建立在Paul Swartz的工作之上。它的结构和主要的Python实现（CPython）差不多，所以理解Byterun会帮助你理解大多数解释器特别是CPython解释器。（如果你不知道你用的是什么Python，那么很可能它就是CPython）。尽管Byterun很小，但它能执行大多数简单的Python程序。</p>
+<h4>A Python Interpreter</h4>
+<p>在开始之前，让我们缩小一下“Pyhton解释器”的意思。在讨论Python的时候，“解释器”这个词可以用在很多不同的地方。有的时候解释器指的是REPL，当你在命令行下敲下<code>python</code>时所得到的交互式环境。有时候人们会相互替代的使用Python解释器和Python来说明执行Python代码的这一过程。在本章，“解释器”有一个更精确的意思：执行Python程序过程中的最后一步。</p>
+<p>在解释器接手之前，Python会执行其他3个步骤：词法分析，语法解析和编译。这三步合起来把源代码转换成_code object_,它包含着解释器可以理解的指令。而解释器的工作就是解释code object中的指令。</p>
+<p>你可能很奇怪执行Python代码会有编译这一步。Python通常被称为解释型语言，就像Ruby，Perl一样，它们和编译型语言相对，比如C，Rust。然而，这里的术语并不是它看起来的那样精确。大多数解释型语言包括Python，确实会有编译这一步。而Python被称为解释型的原因是相对于编译型语言，它在编译这一步的工作相对较少（解释器做相对多的工作）。在这章后面你会看到，Python的编译器比C语言编译器需要更少的关于程序行为的信息。</p>
+<h4>A Python Python Interpreter</h4>
+<p>Byterun是一个用Python写的Python解释器，这点可能让你感到奇怪，但没有比用C语言写C语言编译器更奇怪。（事实上，广泛使用的gcc编译器就是用C语言本身写的）你可以用几乎的任何语言写一个Python解释器。</p>
+<p>用Python写Python既有优点又有缺点。最大的缺点就是速度：用Byterun执行代码要比用CPython执行慢的多，CPython解释器是用C语言实现的并做了优化。然而Byterun是为了学习而设计的，所以速度对我们不重要。使用Python最大优点是我们可以<em>仅仅</em>实现解释器，而不用担心Python运行时的部分，特别是对象系统。比如当Byterun需要创建一个类时，它就会回退到“真正”的Python。另外一个优势是Byterun很容易理解，部分原因是它是用高级语言写的（Python！）（另外我们不会对解释器做优化 --- 再一次，清晰和简单比速度更重要）</p>
+<h3>Building an Interpreter</h3>
+<p>在我们考察Byterun代码之前，我们需要一些对解释器结构的高层次视角。Python解释器是如何工作的？</p>
+<p>Python解释器是一个_虚拟机_,模拟真实计算机的软件。我们这个虚拟机是栈机器，它用几个栈来完成操作（与之相对的是寄存器机器，它从特定的内存地址读写数据）。</p>
+<p>Python解释器是一个_字节码解释器_：它的输入是一些命令集合称作_字节码_。当你写Python代码时，词法分析器，语法解析器和编译器生成code object让解释器去操作。每个code object都包含一个要被执行的指令集合 --- 它就是字节码 --- 另外还有一些解释器需要的信息。字节码是Python代码的一个_中间层表示_：它以一种解释器可以理解的方式来表示源代码。这和汇编语言作为C语言和机器语言的中间表示很类似。</p>
+<h4>A Tiny Interpreter</h4>
+<p>为了让说明更具体，让我们从一个非常小的解释器开始。它只能计算两个数的和，只能理解三个指令。它执行的所有代码只是这三个指令的不同组合。下面就是这三个指令：</p>
+<ul>
+<li><code>LOAD_VALUE</code></li>
+<li><code>ADD_TWO_VALUES</code></li>
+<li><code>PRINT_ANSWER</code></li>
+</ul>
+<p>我们不关心词法，语法和编译，所以我们也不在乎这些指令是如何产生的。你可以想象，你写下<code>7 + 5</code>，然后一个编译器为你生成那三个指令的组合。如果你有一个合适的编译器，你甚至可以用Lisp的语法来写，只要它能生成相同的指令。</p>
+<p>假设</p>
+<pre class="code literal-block"><span></span><span class="mi">7</span> <span class="o">+</span> <span class="mi">5</span>
+</pre>
+
+
+<p>生成这样的指令集：</p>
+<pre class="code literal-block"><span></span><span class="n">what_to_execute</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"instructions"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"LOAD_VALUE"</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>  <span class="c1"># the first number</span>
+                     <span class="p">(</span><span class="s2">"LOAD_VALUE"</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>  <span class="c1"># the second number</span>
+                     <span class="p">(</span><span class="s2">"ADD_TWO_VALUES"</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span>
+                     <span class="p">(</span><span class="s2">"PRINT_ANSWER"</span><span class="p">,</span> <span class="bp">None</span><span class="p">)],</span>
+    <span class="s2">"numbers"</span><span class="p">:</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span> <span class="p">}</span>
+</pre>
+
+
+<p>Python解释器是一个_栈机器_，所以它必须通过操作栈来完成这个加法。(\aosafigref{500l.interpreter.stackmachine}.)解释器先执行第一条指令，<code>LOAD_VALUE</code>，把第一个数压到栈中。接着它把第二个数也压到栈中。然后，第三条指令，<code>ADD_TWO_VALUES</code>,先把两个数从栈中弹出，加起来，再把结果压入栈中。最后一步，把结果弹出并输出。</p>
+<p>\aosafigure[240pt]{interpreter-images/interpreter-stack.png}{A stack machine}{500l.interpreter.stackmachine}</p>
+<p><code>LOAD_VALUE</code>这条指令告诉解释器把一个数压入栈中，但指令本身并没有指明这个数是多少。指令需要一个额外的信息告诉解释器去哪里找到这个数。所以我们的指令集有两个部分：指令本身和一个常量列表。（在Python中，字节码就是我们称为的“指令”，而解释器执行的是_code object_。）</p>
+<p>为什么不把数字直接嵌入指令之中？想象一下，如果我们加的不是数字，而是字符串。我们可不想把字符串这样的东西加到指令中，因为它可以有任意的长度。另外，我们这种设计也意味着我们只需要对象的一份拷贝，比如这个加法 <code>7 + 7</code>, 现在常量表 <code>"numbers"</code>只需包含一个<code>7</code>。</p>
+<p>你可能会想为什么会需要除了<code>ADD_TWO_VALUES</code>之外的指令。的确，对于我们两个数加法，这个例子是有点人为制作的意思。然而，这个指令却是建造更复杂程序的轮子。比如，就我们目前定义的三个指令，只要给出正确的指令组合，我们可以做三个数的加法，或者任意个数的加法。同时，栈提供了一个清晰的方法去跟踪解释器的状态，这为我们增长的复杂性提供了支持。</p>
+<p>现在让我们来完成我们的解释器。解释器对象需要一个栈，它可以用一个列表来表示。它还需要一个方法来描述怎样执行每条指令。比如，<code>LOAD_VALUE</code>会把一个值压入栈中。</p>
+<pre class="code literal-block"><span></span><span class="k">class</span> <span class="nc">Interpreter</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">LOAD_VALUE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">number</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">PRINT_ANSWER</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">answer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">answer</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">ADD_TWO_VALUES</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">first_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">second_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="n">first_num</span> <span class="o">+</span> <span class="n">second_num</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">total</span><span class="p">)</span>
+</pre>
+
+
+<p>这三个方法完成了解释器所理解的三条指令。但解释器还需要一样东西：一个能把所有东西结合在一起并执行的方法。这个方法就叫做<code>run_code</code>, 它把我们前面定义的字典结构<code>what-to-execute</code>作为参数，循环执行里面的每条指令，如何指令有参数，处理参数，然后调用解释器对象中相应的方法。</p>
+<pre class="code literal-block"><span></span>    <span class="k">def</span> <span class="nf">run_code</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">):</span>
+        <span class="n">instructions</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">"instructions"</span><span class="p">]</span>
+        <span class="n">numbers</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">"numbers"</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">each_step</span> <span class="ow">in</span> <span class="n">instructions</span><span class="p">:</span>
+            <span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span> <span class="o">=</span> <span class="n">each_step</span>
+            <span class="k">if</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">"LOAD_VALUE"</span><span class="p">:</span>
+                <span class="n">number</span> <span class="o">=</span> <span class="n">numbers</span><span class="p">[</span><span class="n">argument</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">LOAD_VALUE</span><span class="p">(</span><span class="n">number</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">"ADD_TWO_VALUES"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ADD_TWO_VALUES</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">"PRINT_ANSWER"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">PRINT_ANSWER</span><span class="p">()</span>
+</pre>
+
+
+<p>为了测试，我们创建一个解释器对象，然后用前面定义的 7 + 5 的指令集来调用<code>run_code</code>。</p>
+<pre class="code literal-block"><span></span>    <span class="n">interpreter</span> <span class="o">=</span> <span class="n">Interpreter</span><span class="p">()</span>
+    <span class="n">interpreter</span><span class="o">.</span><span class="n">run_code</span><span class="p">(</span><span class="n">what_to_execute</span><span class="p">)</span>
+</pre>
+
+
+<p>显然，它会输出12</p>
+<p>尽管我们的解释器功能受限，但这个加法过程几乎和真正的Python解释器是一样的。这里，我们还有几点要注意。</p>
+<p>首先，一些指令需要参数。在真正的Python bytecode中，大概有一半的指令有参数。像我们的例子一样，参数和指令打包在一起。注意_指令_的参数和传递给对应方法的参数是不同的。</p>
+<p>第二，指令<code>ADD_TWO_VALUES</code>不需要任何参数，它从解释器栈中弹出所需的值。这正是以栈为基础的解释器的特点。</p>
+<p>记得我们说过只要给出合适的指令集，不需要对解释器做任何改变，我们就能做多个数的加法。考虑下面的指令集，你觉得会发生什么？如果你有一个合适的编译器，什么代码才能编译出下面的指令集？</p>
+<pre class="code literal-block"><span></span>    <span class="n">what_to_execute</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"instructions"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"LOAD_VALUE"</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"LOAD_VALUE"</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"ADD_TWO_VALUES"</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"LOAD_VALUE"</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"ADD_TWO_VALUES"</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"PRINT_ANSWER"</span><span class="p">,</span> <span class="bp">None</span><span class="p">)],</span>
+        <span class="s2">"numbers"</span><span class="p">:</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">]</span> <span class="p">}</span>
+</pre>
+
+
+<p>从这点出发，我们开始看到这种结构的可扩展性：我们可以通过向解释器对象增加方法来描述更多的操作（只要有一个编译器能为我们生成组织良好的指令集）。</p>
+<h4>Variables</h4>
+<p>接下来给我们的解释器增加变量的支持。我们需要一个保存变量值的指令，<code>STORE_NAME</code>;一个取变量值的指令<code>LOAD_NAME</code>;和一个变量到值的映射关系。目前，我们会忽略命名空间和作用域，所以我们可以把变量和值的映射直接存储在解释器对象中。最后，我们要保证<code>what_to_execute</code>除了一个常量列表，还要有个变量名字的列表。</p>
+<pre class="code literal-block"><span></span><span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">s</span><span class="p">():</span>
+<span class="o">...</span>     <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="o">...</span>     <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="o">...</span>     <span class="k">print</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">)</span>
+<span class="c1"># a friendly compiler transforms `s` into:</span>
+    <span class="n">what_to_execute</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"instructions"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"LOAD_VALUE"</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"STORE_NAME"</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"LOAD_VALUE"</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"STORE_NAME"</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"LOAD_NAME"</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"LOAD_NAME"</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"ADD_TWO_VALUES"</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s2">"PRINT_ANSWER"</span><span class="p">,</span> <span class="bp">None</span><span class="p">)],</span>
+        <span class="s2">"numbers"</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+        <span class="s2">"names"</span><span class="p">:</span>   <span class="p">[</span><span class="s2">"a"</span><span class="p">,</span> <span class="s2">"b"</span><span class="p">]</span> <span class="p">}</span>
+</pre>
+
+
+<p>我们的新的的实现在下面。为了跟踪哪名字绑定到那个值，我们在<code>__init__</code>方法中增加一个<code>environment</code>字典。我们也增加了<code>STORE_NAME</code>和<code>LOAD_NAME</code>方法，它们获得变量名，然后从<code>environment</code>字典中设置或取出这个变量值。</p>
+<p>现在指令参数就有两个不同的意思，它可能是<code>numbers</code>列表的索引，也可能是<code>names</code>列表的索引。解释器通过检查所执行的指令就能知道是那种参数。而我们打破这种逻辑 ，把指令和它所用何种参数的映射关系放在另一个单独的方法中。</p>
+<pre class="code literal-block"><span></span><span class="k">class</span> <span class="nc">Interpreter</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">STORE_NAME</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+    <span class="k">def</span> <span class="nf">LOAD_NAME</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">parse_argument</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">):</span>
+        <span class="sd">""" Understand what the argument to each instruction means."""</span>
+        <span class="n">numbers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"LOAD_VALUE"</span><span class="p">]</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"LOAD_NAME"</span><span class="p">,</span> <span class="s2">"STORE_NAME"</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">instruction</span> <span class="ow">in</span> <span class="n">numbers</span><span class="p">:</span>
+            <span class="n">argument</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">"numbers"</span><span class="p">][</span><span class="n">argument</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">instruction</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+            <span class="n">argument</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">"names"</span><span class="p">][</span><span class="n">argument</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">argument</span>
+
+    <span class="k">def</span> <span class="nf">run_code</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">):</span>
+        <span class="n">instructions</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">"instructions"</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">each_step</span> <span class="ow">in</span> <span class="n">instructions</span><span class="p">:</span>
+            <span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span> <span class="o">=</span> <span class="n">each_step</span>
+            <span class="n">argument</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_argument</span><span class="p">(</span><span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">"LOAD_VALUE"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">LOAD_VALUE</span><span class="p">(</span><span class="n">argument</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">"ADD_TWO_VALUES"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ADD_TWO_VALUES</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">"PRINT_ANSWER"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">PRINT_ANSWER</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">"STORE_NAME"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">STORE_NAME</span><span class="p">(</span><span class="n">argument</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">"LOAD_NAME"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">LOAD_NAME</span><span class="p">(</span><span class="n">argument</span><span class="p">)</span>
+</pre>
+
+
+<p>仅仅五个指令，<code>run_code</code>这个方法已经开始变得冗长了。如果保持这种结构，那么每条指令都需要一个<code>if</code>分支。这里，我们要利用Python的动态方法查找。我们总会给一个称为<code>FOO</code>的指令定义一个名为<code>FOO</code>的方法，这样我们就可用Python的<code>getattr</code>函数在运行时动态查找方法，而不用这个大大的分支结构。<code>run_code</code>方法现在是这样：</p>
+<pre class="code literal-block"><span></span>    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">):</span>
+        <span class="n">instructions</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">"instructions"</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">each_step</span> <span class="ow">in</span> <span class="n">instructions</span><span class="p">:</span>
+            <span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span> <span class="o">=</span> <span class="n">each_step</span>
+            <span class="n">argument</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_argument</span><span class="p">(</span><span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">)</span>
+            <span class="n">bytecode_method</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instruction</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">argument</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">bytecode_method</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">bytecode_method</span><span class="p">(</span><span class="n">argument</span><span class="p">)</span>
+</pre>
+
+
+<h3>Real Python Bytecode</h3>
+<p>现在，放弃我们的小指令集，去看看真正的Python字节码。字节码的结构和我们的小解释器的指令集差不多，除了字节码用一个字节而不是一个名字来指示这条指令。为了理解它的结构，我们将考察一个函数的字节码。考虑下面这个例子：</p>
+<pre class="code literal-block"><span></span><span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">cond</span><span class="p">():</span>
+<span class="o">...</span>     <span class="n">x</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="o">...</span>     <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+<span class="o">...</span>         <span class="k">return</span> <span class="s1">'yes'</span>
+<span class="o">...</span>     <span class="k">else</span><span class="p">:</span>
+<span class="o">...</span>         <span class="k">return</span> <span class="s1">'no'</span>
+<span class="o">...</span>
+</pre>
+
+
+<p>Python在运行时会暴露一大批内部信息，并且我们可以通过REPL直接访问这些信息。对于函数对象<code>cond</code>，<code>cond.__code__</code>是与其关联的code object，而<code>cond.__code__.co_code</code>就是它的字节码。当你写Python代码时，你永远也不会想直接使用这些属性，但是这可以让我们做出各种恶作剧，同时也可以看看内部机制。</p>
+<pre class="code literal-block"><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">cond</span><span class="o">.</span><span class="vm">__code__</span><span class="o">.</span><span class="n">co_code</span>  <span class="c1"># the bytecode as raw bytes</span>
+<span class="sa">b</span><span class="s1">'d</span><span class="se">\x01\x00</span><span class="s1">}</span><span class="se">\x00\x00</span><span class="s1">|</span><span class="se">\x00\x00</span><span class="s1">d</span><span class="se">\x02\x00</span><span class="s1">k</span><span class="se">\x00\x00</span><span class="s1">r</span><span class="se">\x16\x00</span><span class="s1">d</span><span class="se">\x03\x00</span><span class="s1">Sd</span><span class="se">\x04\x00</span><span class="s1">Sd</span><span class="se">\x00</span>
+   \<span class="n">x00S</span><span class="s1">'</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">list</span><span class="p">(</span><span class="n">cond</span><span class="o">.</span><span class="vm">__code__</span><span class="o">.</span><span class="n">co_code</span><span class="p">)</span>  <span class="c1"># the bytecode as numbers</span>
+<span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">125</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">124</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">107</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">114</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">83</span><span class="p">,</span> 
+ <span class="mi">100</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">83</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">83</span><span class="p">]</span>
+</pre>
+
+
+<p>当我们直接输出这个字节码，它看起来完全无法理解 --- 唯一我们了解的是它是一串字节。很幸运，我们有一个很强大的工具可以用：Python标准库中的<code>dis</code>模块。</p>
+<p><code>dis</code>是一个字节码反汇编器。反汇编器以为机器而写的底层代码作为输入，比如汇编代码和字节码，然后以人类可读的方式输出。当我们运行<code>dis.dis</code>, 它输出每个字节码的解释。</p>
+<pre class="code literal-block"><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">cond</span><span class="p">)</span>
+  <span class="mi">2</span>           <span class="mi">0</span> <span class="n">LOAD_CONST</span>               <span class="mi">1</span> <span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+              <span class="mi">3</span> <span class="n">STORE_FAST</span>               <span class="mi">0</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+  <span class="mi">3</span>           <span class="mi">6</span> <span class="n">LOAD_FAST</span>                <span class="mi">0</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span>
+              <span class="mi">9</span> <span class="n">LOAD_CONST</span>               <span class="mi">2</span> <span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+             <span class="mi">12</span> <span class="n">COMPARE_OP</span>               <span class="mi">0</span> <span class="p">(</span><span class="o">&lt;</span><span class="p">)</span>
+             <span class="mi">15</span> <span class="n">POP_JUMP_IF_FALSE</span>       <span class="mi">22</span>
+
+  <span class="mi">4</span>          <span class="mi">18</span> <span class="n">LOAD_CONST</span>               <span class="mi">3</span> <span class="p">(</span><span class="s1">'yes'</span><span class="p">)</span>
+             <span class="mi">21</span> <span class="n">RETURN_VALUE</span>
+
+  <span class="mi">6</span>     <span class="o">&gt;&gt;</span>   <span class="mi">22</span> <span class="n">LOAD_CONST</span>               <span class="mi">4</span> <span class="p">(</span><span class="s1">'no'</span><span class="p">)</span>
+             <span class="mi">25</span> <span class="n">RETURN_VALUE</span>
+             <span class="mi">26</span> <span class="n">LOAD_CONST</span>               <span class="mi">0</span> <span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+             <span class="mi">29</span> <span class="n">RETURN_VALUE</span>
+</pre>
+
+
+<p>这些都是什么意思？让我们以第一条指令<code>LOAD_CONST</code>为例子。第一列的数字（<code>2</code>）表示对应源代码的行数。第二列的数字是字节码的索引，告诉我们指令<code>LOAD_CONST</code>在0位置。第三列是指令本身对应的人类可读的名字。如果第四列存在，它表示指令的参数。如果第5列存在，它是一个关于参数是什么的提示。</p>
+<p>考虑这个字节码的前几个字节：[100, 1, 0, 125, 0, 0]。这6个字节表示两条带参数的指令。我们可以使用<code>dis.opname</code>，一个字节到可读字符串的映射，来找到指令100和指令125代表是什么：</p>
+<pre class="code literal-block"><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">dis</span><span class="o">.</span><span class="n">opname</span><span class="p">[</span><span class="mi">100</span><span class="p">]</span>
+<span class="s1">'LOAD_CONST'</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">dis</span><span class="o">.</span><span class="n">opname</span><span class="p">[</span><span class="mi">125</span><span class="p">]</span>
+<span class="s1">'STORE_FAST'</span>
+</pre>
+
+
+<p>第二和第三个字节 --- 1 ，0 ---是<code>LOAD_CONST</code>的参数，第五和第六个字节 --- 0，0 --- 是<code>STORE_FAST</code>的参数。就像我们前面的小例子，<code>LOAD_CONST</code>需要知道的到哪去找常量，<code>STORE_FAST</code>需要找到名字。（Python的<code>LOAD_CONST</code>和我们小例子中的<code>LOAD_VALUE</code>一样，<code>LOAD_FAST</code>和<code>LOAD_NAME</code>一样）。所以这六个字节代表第一行源代码<code>x = 3</code>.(为什么用两个字节表示指令的参数？如果Python使用一个字节，每个code object你只能有256个常量/名字，而用两个字节，就增加到了256的平方，65536个）。</p>
+<h4>Conditionals and Loops</h4>
+<p>到目前为止，我们的解释器只能一条接着一条的执行指令。这有个问题，我们经常会想多次执行某个指令，或者在特定的条件下跳过它们。为了可以写循环和分支结构，解释器必须能够在指令中跳转。在某种程度上，Python在字节码中使用<code>GOTO</code>语句来处理循环和分支！让我们再看一个<code>cond</code>函数的反汇编结果：</p>
+<pre class="code literal-block"><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">cond</span><span class="p">)</span>
+  <span class="mi">2</span>           <span class="mi">0</span> <span class="n">LOAD_CONST</span>               <span class="mi">1</span> <span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+              <span class="mi">3</span> <span class="n">STORE_FAST</span>               <span class="mi">0</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+  <span class="mi">3</span>           <span class="mi">6</span> <span class="n">LOAD_FAST</span>                <span class="mi">0</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span>
+              <span class="mi">9</span> <span class="n">LOAD_CONST</span>               <span class="mi">2</span> <span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+             <span class="mi">12</span> <span class="n">COMPARE_OP</span>               <span class="mi">0</span> <span class="p">(</span><span class="o">&lt;</span><span class="p">)</span>
+             <span class="mi">15</span> <span class="n">POP_JUMP_IF_FALSE</span>       <span class="mi">22</span>
+
+  <span class="mi">4</span>          <span class="mi">18</span> <span class="n">LOAD_CONST</span>               <span class="mi">3</span> <span class="p">(</span><span class="s1">'yes'</span><span class="p">)</span>
+             <span class="mi">21</span> <span class="n">RETURN_VALUE</span>
+
+  <span class="mi">6</span>     <span class="o">&gt;&gt;</span>   <span class="mi">22</span> <span class="n">LOAD_CONST</span>               <span class="mi">4</span> <span class="p">(</span><span class="s1">'no'</span><span class="p">)</span>
+             <span class="mi">25</span> <span class="n">RETURN_VALUE</span>
+             <span class="mi">26</span> <span class="n">LOAD_CONST</span>               <span class="mi">0</span> <span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+             <span class="mi">29</span> <span class="n">RETURN_VALUE</span>
+</pre>
+
+
+<p>第三行的条件表达式<code>if x &lt; 5</code>被编译成四条指令：<code>LOAD_FAST</code>, <code>LOAD_CONST</code>, <code>COMPARE_OP</code>和 <code>POP_JUMP_IF_FALSE</code>。<code>x &lt; 5</code>对应加载<code>x</code>，加载5，比较这两个值。指令<code>POP_JUMP_IF_FALSE</code>完成<code>if</code>语句。这条指令把栈顶的值弹出，如果值为真，什么都不发生。如果值为假，解释器会跳转到另一条指令。</p>
+<p>这条将被加载的指令称为跳转目标，它作为指令<code>POP_JUMP</code>的参数。这里，跳转目标是22，索引为22的指令是<code>LOAD_CONST</code>,对应源码的第6行。（<code>dis</code>用<code>&gt;&gt;</code>标记跳转目标。）如果<code>X &lt; 5</code>为假，解释器会忽略第四行（<code>return yes</code>）,直接跳转到第6行（<code>return "no"</code>）。因此解释器通过跳转指令选择性的执行指令。</p>
+<p>Python的循环也依赖于跳转。在下面的字节码中，<code>while x &lt; 5</code>这一行产生了和<code>if x &lt; 10</code>几乎一样的字节码。在这两种情况下，解释器都是先执行比较，然后执行<code>POP_JUMP_IF_FALSE</code>来控制下一条执行哪个指令。第四行的最后一条字节码<code>JUMP_ABSOLUT</code>(循环体结束的地方），让解释器返回到循环开始的第9条指令处。当 <code>x &lt; 10</code>变为假，<code>POP_JUMP_IF_FALSE</code>会让解释器跳到循环的终止处，第34条指令。 </p>
+<pre class="code literal-block"><span></span><span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">loop</span><span class="p">():</span>
+<span class="o">...</span>      <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="o">...</span>      <span class="k">while</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+<span class="o">...</span>          <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="o">...</span>      <span class="k">return</span> <span class="n">x</span>
+<span class="o">...</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
+  <span class="mi">2</span>           <span class="mi">0</span> <span class="n">LOAD_CONST</span>               <span class="mi">1</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+              <span class="mi">3</span> <span class="n">STORE_FAST</span>               <span class="mi">0</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+  <span class="mi">3</span>           <span class="mi">6</span> <span class="n">SETUP_LOOP</span>              <span class="mi">26</span> <span class="p">(</span><span class="n">to</span> <span class="mi">35</span><span class="p">)</span>
+        <span class="o">&gt;&gt;</span>    <span class="mi">9</span> <span class="n">LOAD_FAST</span>                <span class="mi">0</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span>
+             <span class="mi">12</span> <span class="n">LOAD_CONST</span>               <span class="mi">2</span> <span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+             <span class="mi">15</span> <span class="n">COMPARE_OP</span>               <span class="mi">0</span> <span class="p">(</span><span class="o">&lt;</span><span class="p">)</span>
+             <span class="mi">18</span> <span class="n">POP_JUMP_IF_FALSE</span>       <span class="mi">34</span>
+
+  <span class="mi">4</span>          <span class="mi">21</span> <span class="n">LOAD_FAST</span>                <span class="mi">0</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span>
+             <span class="mi">24</span> <span class="n">LOAD_CONST</span>               <span class="mi">1</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+             <span class="mi">27</span> <span class="n">BINARY_ADD</span>
+             <span class="mi">28</span> <span class="n">STORE_FAST</span>               <span class="mi">0</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span>
+             <span class="mi">31</span> <span class="n">JUMP_ABSOLUTE</span>            <span class="mi">9</span>
+        <span class="o">&gt;&gt;</span>   <span class="mi">34</span> <span class="n">POP_BLOCK</span>
+
+  <span class="mi">5</span>     <span class="o">&gt;&gt;</span>   <span class="mi">35</span> <span class="n">LOAD_FAST</span>                <span class="mi">0</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span>
+             <span class="mi">38</span> <span class="n">RETURN_VALUE</span>
+</pre>
+
+
+<h4>Explore Bytecode</h4>
+<p>我希望你用<code>dis.dis</code>来试试你自己写的函数。一些有趣的问题值得探索：</p>
+<ul>
+<li>对解释器而言for循环和while循环有什么不同？</li>
+<li>能不能写出两个不同函数，却能产生相同的字节码?</li>
+<li>
+<code>elif</code>是怎么工作的？列表推导呢？</li>
+</ul>
+<h3>Frames</h3>
+<p>到目前为止，我们已经知道了Python虚拟机是一个栈机器。它能顺序执行指令，在指令间跳转，压入或弹出栈值。但是这和我们期望的解释器还有一定距离。在前面的那个例子中，最后一条指令是<code>RETURN_VALUE</code>,它和<code>return</code>语句相对应。但是它返回到哪里去呢？</p>
+<p>为了回答这个问题，我们必须再增加一层复杂性：frame。一个frame是一些信息的集合和代码的执行上下文。frames在Python代码执行时动态的创建和销毁。每个frame对应函数的一次调用。--- 所以每个frame只有一个code object与之关联，而一个code object可以有多个frame。比如你有一个函数递归的调用自己10次，这会产生11个frame，每次调用对应一个，再加上启动模块对应的一个frame。总的来说，Python程序的每个作用域有一个frame，比如，模块，函数，类。</p>
+<p>Frame存在于_调用栈_中，一个和我们之前讨论的完全不同的栈。（你最熟悉的栈就是调用栈，就是你经常看到的异常回溯，每个以"File 'program.py'"开始的回溯对应一个frame。）解释器在执行字节码时操作的栈，我们叫它_数据栈_。其实还有第三个栈，叫做_块栈_，用于特定的控制流块，比如循环和异常处理。调用栈中的每个frame都有它自己的数据栈和块栈。</p>
+<p>让我们用一个具体的例子来说明。假设Python解释器执行到标记为3的地方。解释器正在<code>foo</code>函数的调用中，它接着调用<code>bar</code>。下面是frame调用栈，块栈和数据栈的示意图。我们感兴趣的是解释器先从最底下的<code>foo()</code>开始，接着执行<code>foo</code>的函数体，然后到达<code>bar</code>。</p>
+<pre class="code literal-block"><span></span><span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">bar</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+<span class="o">...</span>     <span class="n">z</span> <span class="o">=</span> <span class="n">y</span> <span class="o">+</span> <span class="mi">3</span>     <span class="c1"># &lt;--- (3) ... and the interpreter is here.</span>
+<span class="o">...</span>     <span class="k">return</span> <span class="n">z</span>
+<span class="o">...</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">foo</span><span class="p">():</span>
+<span class="o">...</span>     <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="o">...</span>     <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="o">...</span>     <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">bar</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="c1"># &lt;--- (2) ... which is returning a call to bar ...</span>
+<span class="o">...</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">foo</span><span class="p">()</span>             <span class="c1"># &lt;--- (1) We're in the middle of a call to foo ...</span>
+<span class="mi">3</span>
+</pre>
+
+
+<p>\aosafigure[240pt]{interpreter-images/interpreter-callstack.png}{The call stack}{500l.interpreter.callstack}</p>
+<p>现在，解释器在<code>bar</code>函数的调用中。调用栈中有3个frame：一个对应于模块层，一个对应函数<code>foo</code>,别一个对应函数<code>bar</code>。(\aosafigref{500l.interpreter.callstack}.)一旦<code>bar</code>返回，与它对应的frame就会从调用栈中弹出并丢弃。</p>
+<p>字节码指令<code>RETURN_VALUE</code>告诉解释器在frame间传递一个值。首先，它把位于调用栈栈顶的frame中的数据栈的栈顶值弹出。然后把整个frame弹出丢弃。最后把这个值压到下一个frame的数据栈中。</p>
+<p>当Ned Batchelder和我在写Byterun时，很长一段时间我们的实现中一直有个重大的错误。我们整个虚拟机中只有一个数据栈，而不是每个frame都有一个。我们写了很多测试代码，同时在Byterun和真正的Python上运行，希望得到一致结果。我们几乎通过了所有测试，只有一样东西不能通过，那就是生成器。最后，通过仔细的阅读CPython的源码，我们发现了错误所在<sup id="fnref-thanks"><a class="footnote-ref" href="posts/python-interpreter/#fn-thanks">1</a></sup>。把数据栈移到每个frame就解决了这个问题。</p>
+<p>回头在看看这个bug，我惊讶的发现Python真的很少依赖于每个frame有一个数据栈这个特性。在Python中几乎所有的操作都会清空数据栈，所以所有的frame公用一个数据栈是没问题的。在上面的例子中，当<code>bar</code>执行完后，它的数据栈为空。即使<code>foo</code>公用这一个栈，它的值也不会受影响。然而，对应生成器，一个关键的特点是它能暂停一个frame的执行，返回到其他的frame，一段时间后它能返回到原来的frame，并以它离开时的相同状态继续执行。</p>
+<h3>Byterun</h3>
+<p>现在我们有足够的Python解释器的知识背景去考察Byterun。</p>
+<p>Byterun中有四种对象。</p>
+<ul>
+<li>
+<code>VirtualMachine</code>类，它管理高层结构，frame调用栈，指令到操作的映射。这是一个比前面<code>Inteprter</code>对象更复杂的版本。</li>
+<li>
+<code>Frame</code>类，每个<code>Frame</code>类都有一个code object，并且管理者其他一些必要的状态信息，全局和局部命名空间，指向调用它的frame的指针和最后执行的字节码指令。 </li>
+<li>
+<code>Function</code>类，它被用来代替真正的Python函数。回想一下，调用函数时会创建一个新的frame。我们自己实现<code>Function</code>，所以我们控制新frame的创建。</li>
+<li>
+<code>Block</code>类，它只是包装了block的3个属性。（block的细节不是解释器的核心，我们不会花时间在它身上，把它列在这里，是因为Byterun需要它。）</li>
+</ul>
+<h4>The <code>VirtualMachine</code> Class</h4>
+<p>程序运行时只有一个<code>VirtualMachine</code>被创建，因为我们只有一个解释器。<code>VirtualMachine</code>保存调用栈，异常状态，在frame中传递的返回值。它的入口点是<code>run_code</code>方法，它以编译后的code object为参数，以创建一个frame为开始，然后运行这个frame。这个frame可能再创建出新的frame；调用栈随着程序的运行增长缩短。当第一个frame返回时，执行结束。</p>
+<pre class="code literal-block"><span></span><span class="k">class</span> <span class="nc">VirtualMachineError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frames</span> <span class="o">=</span> <span class="p">[]</span>   <span class="c1"># The call stack of frames.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c1"># The current frame.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_exception</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">run_code</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="n">global_names</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">local_names</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">""" An entry point to execute code using the virtual machine."""</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_frame</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">global_names</span><span class="o">=</span><span class="n">global_names</span><span class="p">,</span> 
+                                <span class="n">local_names</span><span class="o">=</span><span class="n">local_names</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+</pre>
+
+
+<h4>The <code>Frame</code> Class</h4>
+<p>接下来，我们来写<code>Frame</code>对象。frame是一个属性的集合，它没有任何方法。前面提到过，这些属性包括由编译器生成的code object；局部，全局和内置命名空间；前一个frame的引用；一个数据栈；一个块栈；最后执行的指令指针。（对于内置命名空间我们需要多做一点工作，Python在不同模块中对这个命名空间有不同的处理；但这个细节对我们的虚拟机不重要。）</p>
+<pre class="code literal-block"><span></span><span class="k">class</span> <span class="nc">Frame</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code_obj</span><span class="p">,</span> <span class="n">global_names</span><span class="p">,</span> <span class="n">local_names</span><span class="p">,</span> <span class="n">prev_frame</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">code_obj</span> <span class="o">=</span> <span class="n">code_obj</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">global_names</span> <span class="o">=</span> <span class="n">global_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">local_names</span> <span class="o">=</span> <span class="n">local_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_frame</span> <span class="o">=</span> <span class="n">prev_frame</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">prev_frame</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">builtin_names</span> <span class="o">=</span> <span class="n">prev_frame</span><span class="o">.</span><span class="n">builtin_names</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">builtin_names</span> <span class="o">=</span> <span class="n">local_names</span><span class="p">[</span><span class="s1">'__builtins__'</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">builtin_names</span><span class="p">,</span> <span class="s1">'__dict__'</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">builtin_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builtin_names</span><span class="o">.</span><span class="vm">__dict__</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_instruction</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">block_stack</span> <span class="o">=</span> <span class="p">[]</span>
+</pre>
+
+
+<p>接着，我们在虚拟机中增加对frame的操作。这有3个帮助函数：一个创建新的frame的方法，和压栈和出栈的方法。第四个函数，<code>run_frame</code>,完成执行frame的主要工作，待会我们再讨论这个方法。</p>
+<pre class="code literal-block"><span></span><span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="c1"># Frame manipulation</span>
+    <span class="k">def</span> <span class="nf">make_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="n">callargs</span><span class="o">=</span><span class="p">{},</span> <span class="n">global_names</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">local_names</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">global_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">local_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">local_names</span> <span class="o">=</span> <span class="n">global_names</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="p">:</span>
+            <span class="n">global_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">global_names</span>
+            <span class="n">local_names</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">global_names</span> <span class="o">=</span> <span class="n">local_names</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">'__builtins__'</span><span class="p">:</span> <span class="n">__builtins__</span><span class="p">,</span>
+                <span class="s1">'__name__'</span><span class="p">:</span> <span class="s1">'__main__'</span><span class="p">,</span>
+                <span class="s1">'__doc__'</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                <span class="s1">'__package__'</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="n">local_names</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">callargs</span><span class="p">)</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">Frame</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">global_names</span><span class="p">,</span> <span class="n">local_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">frame</span>
+
+    <span class="k">def</span> <span class="nf">push_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span>
+
+    <span class="k">def</span> <span class="nf">pop_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">run_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+        <span class="c1"># we'll come back to this shortly</span>
+</pre>
+
+
+<h4>The <code>Function</code> Class</h4>
+<p><code>Function</code>的实现有点扭曲，但是大部分的细节对理解解释器不重要。重要的是当调用函数时 --- <code>__call__</code>方法被调用 --- 它创建一个新的<code>Frame</code>并运行它。</p>
+<pre class="code literal-block"><span></span><span class="k">class</span> <span class="nc">Function</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">"""</span>
+<span class="sd">    Create a realistic function object, defining the things the interpreter expects.</span>
+<span class="sd">    """</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">'func_code'</span><span class="p">,</span> <span class="s1">'func_name'</span><span class="p">,</span> <span class="s1">'func_defaults'</span><span class="p">,</span> <span class="s1">'func_globals'</span><span class="p">,</span>
+        <span class="s1">'func_locals'</span><span class="p">,</span> <span class="s1">'func_dict'</span><span class="p">,</span> <span class="s1">'func_closure'</span><span class="p">,</span>
+        <span class="s1">'__name__'</span><span class="p">,</span> <span class="s1">'__dict__'</span><span class="p">,</span> <span class="s1">'__doc__'</span><span class="p">,</span>
+        <span class="s1">'_vm'</span><span class="p">,</span> <span class="s1">'_func'</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="n">globs</span><span class="p">,</span> <span class="n">defaults</span><span class="p">,</span> <span class="n">closure</span><span class="p">,</span> <span class="n">vm</span><span class="p">):</span>
+        <span class="sd">"""You don't need to follow this closely to understand the interpreter."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vm</span> <span class="o">=</span> <span class="n">vm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_code</span> <span class="o">=</span> <span class="n">code</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">or</span> <span class="n">code</span><span class="o">.</span><span class="n">co_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_defaults</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">defaults</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_globals</span> <span class="o">=</span> <span class="n">globs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_locals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_closure</span> <span class="o">=</span> <span class="n">closure</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">code</span><span class="o">.</span><span class="n">co_consts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">code</span><span class="o">.</span><span class="n">co_consts</span> <span class="k">else</span> <span class="bp">None</span>
+
+        <span class="c1"># Sometimes, we need a real Python function.  This is for that.</span>
+        <span class="n">kw</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">'argdefs'</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">func_defaults</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">closure</span><span class="p">:</span>
+            <span class="n">kw</span><span class="p">[</span><span class="s1">'closure'</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">make_cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">closure</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_func</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">globs</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">"""When calling a Function, make a new frame and run it."""</span>
+        <span class="n">callargs</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getcallargs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># Use callargs to provide a mapping of arguments: values to pass into the new </span>
+        <span class="c1"># frame.</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm</span><span class="o">.</span><span class="n">make_frame</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">func_code</span><span class="p">,</span> <span class="n">callargs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">func_globals</span><span class="p">,</span> <span class="p">{}</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm</span><span class="o">.</span><span class="n">run_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">make_cell</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="sd">"""Create a real Python closure and grab a cell."""</span>
+    <span class="c1"># Thanks to Alex Gaynor for help with this bit of twistiness.</span>
+    <span class="n">fn</span> <span class="o">=</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">x</span><span class="p">)(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fn</span><span class="o">.</span><span class="vm">__closure__</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre>
+
+
+<p>接着，回到<code>VirtualMachine</code>对象，我们对数据栈的操作也增加一些帮助方法。字节码操作的栈总是在当前frame的数据栈。这些帮助函数让我们能实现<code>POP_TOP</code>,<code>LOAD_FAST</code>字节码,并且让其他操作栈的指令可读性更高。</p>
+<pre class="code literal-block"><span></span><span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="c1"># Data stack manipulation</span>
+    <span class="k">def</span> <span class="nf">top</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">push</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">vals</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">popn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+        <span class="sd">"""Pop a number of values from the value stack.</span>
+<span class="sd">        A list of `n` values is returned, the deepest value first.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">n</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="n">n</span><span class="p">:]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="n">n</span><span class="p">:]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">return</span> <span class="n">ret</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+</pre>
+
+
+<p>在我们运行frame之前，我们还需两个方法。</p>
+<p>第一个方法，<code>parse_byte_and_args</code>,以一个字节码为输入，先检查它是否有参数，如果有，就解析它的参数。这个方法同时也更新frame的<code>last_instruction</code>属性，它指向最后执行的指令。一条没有参数的指令只有一个字节长度，而有参数的字节有3个字节长。参数的意义依赖于指令是什么。比如，前面说过，指令<code>POP_JUMP_IF_FALSE</code>,它的参数指的是跳转目标。<code>BUILD_LIST</code>, 它的参数是列表的个数。<code>LOAD_CONST</code>,它的参数是常量的索引。</p>
+<p>一些指令用简单的数字作为参数。对于另一些，虚拟机需要一点努力去发现它含意。标准库中的<code>dis</code>模块中有一个备忘单，它解释什么参数有什么意思，这让我们的代码更加简洁。比如，列表<code>dis.hasname</code>告诉我们<code>LOAD_NAME</code>, <code>IMPORT_NAME</code>,<code>LOAD_GLOBAL</code>,以及另外的9个指令都有同样的意思：名字列表的索引。</p>
+<pre class="code literal-block"><span></span><span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">parse_byte_and_args</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
+        <span class="n">opoffset</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span>
+        <span class="n">byteCode</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">code_obj</span><span class="o">.</span><span class="n">co_code</span><span class="p">[</span><span class="n">opoffset</span><span class="p">]</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">byte_name</span> <span class="o">=</span> <span class="n">dis</span><span class="o">.</span><span class="n">opname</span><span class="p">[</span><span class="n">byteCode</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">byteCode</span> <span class="o">&gt;=</span> <span class="n">dis</span><span class="o">.</span><span class="n">HAVE_ARGUMENT</span><span class="p">:</span>
+            <span class="c1"># index into the bytecode</span>
+            <span class="n">arg</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">code_obj</span><span class="o">.</span><span class="n">co_code</span><span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span><span class="p">:</span><span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span>  
+            <span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span> <span class="o">+=</span> <span class="mi">2</span>   <span class="c1"># advance the instruction pointer</span>
+            <span class="n">arg_val</span> <span class="o">=</span> <span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">arg</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mi">256</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">byteCode</span> <span class="ow">in</span> <span class="n">dis</span><span class="o">.</span><span class="n">hasconst</span><span class="p">:</span>   <span class="c1"># Look up a constant</span>
+                <span class="n">arg</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">code_obj</span><span class="o">.</span><span class="n">co_consts</span><span class="p">[</span><span class="n">arg_val</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">byteCode</span> <span class="ow">in</span> <span class="n">dis</span><span class="o">.</span><span class="n">hasname</span><span class="p">:</span>  <span class="c1"># Look up a name</span>
+                <span class="n">arg</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">code_obj</span><span class="o">.</span><span class="n">co_names</span><span class="p">[</span><span class="n">arg_val</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">byteCode</span> <span class="ow">in</span> <span class="n">dis</span><span class="o">.</span><span class="n">haslocal</span><span class="p">:</span> <span class="c1"># Look up a local name</span>
+                <span class="n">arg</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">code_obj</span><span class="o">.</span><span class="n">co_varnames</span><span class="p">[</span><span class="n">arg_val</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">byteCode</span> <span class="ow">in</span> <span class="n">dis</span><span class="o">.</span><span class="n">hasjrel</span><span class="p">:</span>  <span class="c1"># Calculate a relative jump</span>
+                <span class="n">arg</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span> <span class="o">+</span> <span class="n">arg_val</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">arg</span> <span class="o">=</span> <span class="n">arg_val</span>
+            <span class="n">argument</span> <span class="o">=</span> <span class="p">[</span><span class="n">arg</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">argument</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">return</span> <span class="n">byte_name</span><span class="p">,</span> <span class="n">argument</span>
+</pre>
+
+
+<p>下一个方法是<code>dispatch</code>,它查看给定的指令并执行相应的操作。在CPython中，这个分派函数用一个巨大的switch语句实现，有超过1500行的代码。幸运的是，我们用的是Python，我们的代码会简洁的多。我们会为每一个字节码名字定义一个方法，然后用<code>getattr</code>来查找。就像我们前面的小解释器一样，如果一条指令叫做<code>FOO_BAR</code>，那么它对应的方法就是<code>byte_FOO_BAR</code>。现在，我们先把这些方法当做一个黑盒子。每个指令方法都会返回<code>None</code>或者一个字符串<code>why</code>,有些情况下虚拟机需要这个额外<code>why</code>信息。这些指令方法的返回值，仅作为解释器状态的内部指示，千万不要和执行frame的返回值相混淆。</p>
+<pre class="code literal-block"><span></span><span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">byte_name</span><span class="p">,</span> <span class="n">argument</span><span class="p">):</span>
+        <span class="sd">""" Dispatch by bytename to the corresponding methods.</span>
+<span class="sd">        Exceptions are caught and set on the virtual machine."""</span>
+
+        <span class="c1"># When later unwinding the block stack,</span>
+        <span class="c1"># we need to keep track of why we are doing it.</span>
+        <span class="n">why</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">bytecode_fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">'byte_</span><span class="si">%s</span><span class="s1">'</span> <span class="o">%</span> <span class="n">byte_name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">bytecode_fn</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">byte_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'UNARY_'</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">unaryOperator</span><span class="p">(</span><span class="n">byte_name</span><span class="p">[</span><span class="mi">6</span><span class="p">:])</span>
+                <span class="k">elif</span> <span class="n">byte_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'BINARY_'</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">binaryOperator</span><span class="p">(</span><span class="n">byte_name</span><span class="p">[</span><span class="mi">7</span><span class="p">:])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">VirtualMachineError</span><span class="p">(</span>
+                        <span class="s2">"unsupported bytecode type: </span><span class="si">%s</span><span class="s2">"</span> <span class="o">%</span> <span class="n">byte_name</span>
+                    <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">why</span> <span class="o">=</span> <span class="n">bytecode_fn</span><span class="p">(</span><span class="o">*</span><span class="n">argument</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="c1"># deal with exceptions encountered while executing the op.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_exception</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="bp">None</span><span class="p">,)</span>
+            <span class="n">why</span> <span class="o">=</span> <span class="s1">'exception'</span>
+
+        <span class="k">return</span> <span class="n">why</span>
+
+    <span class="k">def</span> <span class="nf">run_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="sd">"""Run a frame until it returns (somehow).</span>
+<span class="sd">        Exceptions are raised, the return value is returned.</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">byte_name</span><span class="p">,</span> <span class="n">arguments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_byte_and_args</span><span class="p">()</span>
+
+            <span class="n">why</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dispatch</span><span class="p">(</span><span class="n">byte_name</span><span class="p">,</span> <span class="n">arguments</span><span class="p">)</span>
+
+            <span class="c1"># Deal with any block management we need to do</span>
+            <span class="k">while</span> <span class="n">why</span> <span class="ow">and</span> <span class="n">frame</span><span class="o">.</span><span class="n">block_stack</span><span class="p">:</span>
+                <span class="n">why</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manage_block_stack</span><span class="p">(</span><span class="n">why</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">why</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pop_frame</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">why</span> <span class="o">==</span> <span class="s1">'exception'</span><span class="p">:</span>
+            <span class="n">exc</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">tb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_exception</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">exc</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+            <span class="n">e</span><span class="o">.</span><span class="n">__traceback__</span> <span class="o">=</span> <span class="n">tb</span>
+            <span class="k">raise</span> <span class="n">e</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_value</span>
+</pre>
+
+
+<h4>The <code>Block</code> Class</h4>
+<p>在我们完成每个字节码方法前，我们简单的讨论一下块。一个块被用于某种控制流，特别是异常处理和循环。它负责保证当操作完成后数据栈处于正确的状态。比如，在一个循环中，一个特殊的迭代器会存在栈中，当循环完成时它从栈中弹出。解释器需要检查循环仍在继续还是已经停止。</p>
+<p>为了跟踪这些额外的信息，解释器设置了一个标志来指示它的状态。我们用一个变量<code>why</code>实现这个标志，它可以是<code>None</code>或者是下面几个字符串这一，<code>"continue"</code>, <code>"break"</code>,<code>"excption"</code>,<code>return</code>。他们指示对块栈和数据栈进行什么操作。回到我们迭代器的例子，如果块栈的栈顶是一个<code>loop</code>块，<code>why</code>是<code>continue</code>,迭代器就因该保存在数据栈上，不是如果<code>why</code>是<code>break</code>,迭代器就会被弹出。</p>
+<p>块操作的细节比较精细，我们不会花时间在这上面，但是有兴趣的读者值得仔细的看看。</p>
+<pre class="code literal-block"><span></span><span class="n">Block</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">"Block"</span><span class="p">,</span> <span class="s2">"type, handler, stack_height"</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="c1"># Block stack manipulation</span>
+    <span class="k">def</span> <span class="nf">push_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b_type</span><span class="p">,</span> <span class="n">handler</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">level</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">block_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Block</span><span class="p">(</span><span class="n">b_type</span><span class="p">,</span> <span class="n">handler</span><span class="p">,</span> <span class="n">stack_height</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">pop_block</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">block_stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">unwind_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">block</span><span class="p">):</span>
+        <span class="sd">"""Unwind the values on the data stack corresponding to a given block."""</span>
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">'except-handler'</span><span class="p">:</span>
+            <span class="c1"># The exception itself is on the stack as type, value, and traceback.</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="mi">3</span>  
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">block</span><span class="o">.</span><span class="n">level</span> <span class="o">+</span> <span class="n">offset</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">'except-handler'</span><span class="p">:</span>
+            <span class="n">traceback</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">exctype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_exception</span> <span class="o">=</span> <span class="n">exctype</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span>
+
+    <span class="k">def</span> <span class="nf">manage_block_stack</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">why</span><span class="p">):</span>
+        <span class="sd">""" """</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">block_stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">'loop'</span> <span class="ow">and</span> <span class="n">why</span> <span class="o">==</span> <span class="s1">'continue'</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">return_value</span><span class="p">)</span>
+            <span class="n">why</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">return</span> <span class="n">why</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pop_block</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unwind_block</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">'loop'</span> <span class="ow">and</span> <span class="n">why</span> <span class="o">==</span> <span class="s1">'break'</span><span class="p">:</span>
+            <span class="n">why</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">handler</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">why</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">'setup-except'</span><span class="p">,</span> <span class="s1">'finally'</span><span class="p">]</span> <span class="ow">and</span> <span class="n">why</span> <span class="o">==</span> <span class="s1">'exception'</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">push_block</span><span class="p">(</span><span class="s1">'except-handler'</span><span class="p">)</span>
+            <span class="n">exctype</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">tb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_exception</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">tb</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">exctype</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">tb</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">exctype</span><span class="p">)</span> <span class="c1"># yes, twice</span>
+            <span class="n">why</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">handler</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">why</span>
+
+        <span class="k">elif</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">'finally'</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">why</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'return'</span><span class="p">,</span> <span class="s1">'continue'</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">return_value</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">why</span><span class="p">)</span>
+
+            <span class="n">why</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">handler</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">why</span>
+        <span class="k">return</span> <span class="n">why</span>
+</pre>
+
+
+<h3>The Instructions</h3>
+<p>剩下了的就是完成那些指令方法了：<code>byte_LOAD_FAST</code>,<code>byte_BINARY_MODULO</code>等等。而这些指令的实现并不是很有趣，这里我们只展示了一小部分，完整的实现在这儿https://github.com/nedbat/byterun。（足够执行我们前面所述的所有代码了。）</p>
+<pre class="code literal-block"><span></span><span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="c1">## Stack manipulation</span>
+
+    <span class="k">def</span> <span class="nf">byte_LOAD_CONST</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">const</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">const</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_POP_TOP</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="c1">## Names</span>
+    <span class="k">def</span> <span class="nf">byte_LOAD_NAME</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_builtins</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_builtins</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span><span class="s2">"name '</span><span class="si">%s</span><span class="s2">' is not defined"</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_STORE_NAME</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">byte_LOAD_FAST</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">UnboundLocalError</span><span class="p">(</span>
+                <span class="s2">"local variable '</span><span class="si">%s</span><span class="s2">' referenced before assignment"</span> <span class="o">%</span> <span class="n">name</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_STORE_FAST</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">byte_LOAD_GLOBAL</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">f_globals</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">f_globals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">f_builtins</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">f_builtins</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span><span class="s2">"global name '</span><span class="si">%s</span><span class="s2">' is not defined"</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="c1">## Operators</span>
+
+    <span class="n">BINARY_OPERATORS</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">'POWER'</span><span class="p">:</span>    <span class="nb">pow</span><span class="p">,</span>
+        <span class="s1">'MULTIPLY'</span><span class="p">:</span> <span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span>
+        <span class="s1">'FLOOR_DIVIDE'</span><span class="p">:</span> <span class="n">operator</span><span class="o">.</span><span class="n">floordiv</span><span class="p">,</span>
+        <span class="s1">'TRUE_DIVIDE'</span><span class="p">:</span>  <span class="n">operator</span><span class="o">.</span><span class="n">truediv</span><span class="p">,</span>
+        <span class="s1">'MODULO'</span><span class="p">:</span>   <span class="n">operator</span><span class="o">.</span><span class="n">mod</span><span class="p">,</span>
+        <span class="s1">'ADD'</span><span class="p">:</span>      <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">,</span>
+        <span class="s1">'SUBTRACT'</span><span class="p">:</span> <span class="n">operator</span><span class="o">.</span><span class="n">sub</span><span class="p">,</span>
+        <span class="s1">'SUBSCR'</span><span class="p">:</span>   <span class="n">operator</span><span class="o">.</span><span class="n">getitem</span><span class="p">,</span>
+        <span class="s1">'LSHIFT'</span><span class="p">:</span>   <span class="n">operator</span><span class="o">.</span><span class="n">lshift</span><span class="p">,</span>
+        <span class="s1">'RSHIFT'</span><span class="p">:</span>   <span class="n">operator</span><span class="o">.</span><span class="n">rshift</span><span class="p">,</span>
+        <span class="s1">'AND'</span><span class="p">:</span>      <span class="n">operator</span><span class="o">.</span><span class="n">and_</span><span class="p">,</span>
+        <span class="s1">'XOR'</span><span class="p">:</span>      <span class="n">operator</span><span class="o">.</span><span class="n">xor</span><span class="p">,</span>
+        <span class="s1">'OR'</span><span class="p">:</span>       <span class="n">operator</span><span class="o">.</span><span class="n">or_</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">binaryOperator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">):</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">BINARY_OPERATORS</span><span class="p">[</span><span class="n">op</span><span class="p">](</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+
+    <span class="n">COMPARE_OPERATORS</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">lt</span><span class="p">,</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">le</span><span class="p">,</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">eq</span><span class="p">,</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">ne</span><span class="p">,</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">gt</span><span class="p">,</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">ge</span><span class="p">,</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">y</span><span class="p">,</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">y</span><span class="p">,</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="ow">is</span> <span class="n">y</span><span class="p">,</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">y</span><span class="p">,</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">byte_COMPARE_OP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">opnum</span><span class="p">):</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">COMPARE_OPERATORS</span><span class="p">[</span><span class="n">opnum</span><span class="p">](</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+
+    <span class="c1">## Attributes and indexing</span>
+
+    <span class="k">def</span> <span class="nf">byte_LOAD_ATTR</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_STORE_ATTR</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">val</span><span class="p">,</span> <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="c1">## Building</span>
+
+    <span class="k">def</span> <span class="nf">byte_BUILD_LIST</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">count</span><span class="p">):</span>
+        <span class="n">elts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">elts</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_BUILD_MAP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">({})</span>
+
+    <span class="k">def</span> <span class="nf">byte_STORE_MAP</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">the_map</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">the_map</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">the_map</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_LIST_APPEND</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">count</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">the_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="n">count</span><span class="p">]</span> <span class="c1"># peek</span>
+        <span class="n">the_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="c1">## Jumps</span>
+
+    <span class="k">def</span> <span class="nf">byte_JUMP_FORWARD</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jump</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">jump</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_JUMP_ABSOLUTE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jump</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">jump</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_POP_JUMP_IF_TRUE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jump</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">val</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">jump</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_POP_JUMP_IF_FALSE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jump</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">val</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">jump</span><span class="p">)</span>
+
+    <span class="c1">## Blocks</span>
+
+    <span class="k">def</span> <span class="nf">byte_SETUP_LOOP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dest</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push_block</span><span class="p">(</span><span class="s1">'loop'</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_GET_ITER</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()))</span>
+
+    <span class="k">def</span> <span class="nf">byte_FOR_ITER</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jump</span><span class="p">):</span>
+        <span class="n">iterobj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">top</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iterobj</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">jump</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_BREAK_LOOP</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">'break'</span>
+
+    <span class="k">def</span> <span class="nf">byte_POP_BLOCK</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pop_block</span><span class="p">()</span>
+
+    <span class="c1">## Functions</span>
+
+    <span class="k">def</span> <span class="nf">byte_MAKE_FUNCTION</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">argc</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">defaults</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="n">argc</span><span class="p">)</span>
+        <span class="n">globs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span>
+        <span class="n">fn</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="n">globs</span><span class="p">,</span> <span class="n">defaults</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_CALL_FUNCTION</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="n">lenKw</span><span class="p">,</span> <span class="n">lenPos</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span> <span class="c1"># KWargs not supported here</span>
+        <span class="n">posargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="n">lenPos</span><span class="p">)</span>
+
+        <span class="n">func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
+        <span class="n">retval</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">posargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">retval</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_RETURN_VALUE</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">"return"</span>
+</pre>
+
+
+<h3>Dynamic Typing: What the Compiler Doesn't Know</h3>
+<p>你可能听过Python是一种动态语言 --- 是它是动态类型的。在我们建造解释器的过程中，已经透露出这样的信息。</p>
+<p>动态的一个意思是很多工作在运行时完成。前面我们看到Python的编译器没有很多关于代码真正做什么的信息。举个例子，考虑下面这个简单的函数<code>mod</code>。它取两个参数，返回它们的模运算值。从它的字节码中，我们看到变量<code>a</code>和<code>b</code>首先被加载，然后字节码<code>BINAY_MODULO</code>完成这个模运算。</p>
+<pre class="code literal-block"><span></span><span class="o">&gt;&gt;&gt;</span> <span class="k">def</span> <span class="nf">mod</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+<span class="o">...</span>    <span class="k">return</span> <span class="n">a</span> <span class="o">%</span> <span class="n">b</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">mod</span><span class="p">)</span>
+  <span class="mi">2</span>           <span class="mi">0</span> <span class="n">LOAD_FAST</span>                <span class="mi">0</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span>
+              <span class="mi">3</span> <span class="n">LOAD_FAST</span>                <span class="mi">1</span> <span class="p">(</span><span class="n">b</span><span class="p">)</span>
+              <span class="mi">6</span> <span class="n">BINARY_MODULO</span>
+              <span class="mi">7</span> <span class="n">RETURN_VALUE</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">mod</span><span class="p">(</span><span class="mi">19</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="mi">4</span>
+</pre>
+
+
+<p>计算19 % 5得4，--- 一点也不奇怪。如果我们用不同类的参数呢？</p>
+<pre class="code literal-block"><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">mod</span><span class="p">(</span><span class="s2">"by</span><span class="si">%s</span><span class="s2">de"</span><span class="p">,</span> <span class="s2">"teco"</span><span class="p">)</span>
+<span class="s1">'bytecode'</span>
+</pre>
+
+
+<p>刚才发生了什么？你可能见过这样的语法，格式化字符串。</p>
+<pre class="code literal-block"><span></span>&gt;&gt;&gt; print("by%sde" % "teco")
+bytecode
+</pre>
+
+
+<p>用符号<code>%</code>去格式化字符串会调用字节码<code>BUNARY_MODULO</code>.它取栈顶的两个值求模，不管这两个值是字符串，数字或是你自己定义的类的实例。字节码在函数编译时生成（或者说，函数定义时）相同的字节码会用于不同类的参数。</p>
+<p>Python的编译器关于字节码的功能知道的很少。而取决于解释器来决定<code>BINAYR_MODULO</code>应用于什么类型的对象并完成正确的操作。这就是为什么Python被描述为_动态类型_：直到运行前你不必知道这个函数参数的类型。相反，在一个静态类型语言中，程序员需要告诉编译器参数的类型是什么（或者编译器自己推断出参数的类型。）</p>
+<p>编译器的无知是优化Python的一个挑战 --- 只看字节码，而不真正运行它，你就不知道每条字节码在干什么！你可以定义一个类，实现<code>__mod__</code>方法，当你对这个类的实例使用<code>%</code>时，Python就会自动调用这个方法。所以，<code>BINARY_MODULO</code>其实可以运行任何代码。</p>
+<p>看看下面的代码，第一个<code>a % b</code>看起来没有用。</p>
+<pre class="code literal-block"><span></span><span class="k">def</span> <span class="nf">mod</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">%</span> <span class="n">b</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">%</span><span class="n">b</span>
+</pre>
+
+
+<p>不幸的是，对这段代码进行静态分析 --- 不运行它 --- 不能确定第一个<code>a % b</code>没有做任何事。用 <code>%</code>调用<code>__mod__</code>可能会写一个文件，或是和程序的其他部分交互，或者其他任何可以在Python中完成的事。很难优化一个你不知道它会做什么的函数。在Russell Power和Alex Rubinsteyn的优秀论文中写道，“我们可以用多快的速度解释Python？”，他们说，“在普遍缺乏类型信息下，每条指令必须被看作一个<code>INVOKE_ARBITRARY_METHOD</code>。”</p>
+<h3>Conclusion</h3>
+<p>Byterun是一个比CPython容易理解的简洁的Python解释器。Byterun复制了CPython的主要结构：一个基于栈的指令集称为字节码，它们顺序执行或在指令间跳转，向栈中压入和从中弹出数据。解释器随着函数和生成器的调用和返回，动态的创建，销毁frame，并在frame间跳转。Byterun也有着和真正解释器一样的限制：因为Python使用动态类型，解释器必须在运行时决定指令的正确行为。</p>
+<p>我鼓励你去反汇编你的程序，然后用Byterun来运行。你很快会发现这个缩短版的Byterun所没有实现的指令。完整的实现在https://github.com/nedbat/byterun，或者仔细阅读真正的CPython解释器<code>ceval.c</code>,你也可以实现自己的解释器！</p>
+<h3>Acknowledgements</h3>
+<p>Thanks to Ned Batchelder for originating this project and guiding my contributions, Michael Arntzenius for his help debugging the code and editing the prose, Leta Montopoli for her edits, and the entire Recurse Center community for their support and interest. Any errors are my own.</p>
+<div class="footnote">
+<hr>
+<ol>
+<li id="fn-thanks">
+<p>感谢 Michael Arntzenius 对这个bug的洞悉。 <a class="footnote-backref" href="posts/python-interpreter/#fnref-thanks" title="Jump back to footnote 1 in the text">↩</a></p>
+</li>
+</ol>
+</div>
+</div>
+    </div>
+    </article><article class="h-entry post-text"><header><h1 class="p-name entry-title"><a href="posts/a-template-engine/" class="u-url">A Template Engine</a></h1>
+        <div class="metadata">
+            <p class="byline author vcard"><span class="byline-name fn" itemprop="author">
+                Tao Qingyun
+            </span></p>
+            <p class="dateline"><a href="posts/a-template-engine/" rel="bookmark"><time class="published dt-published" datetime="2015-10-09T11:32:25+08:00" title="2015-10-09 11:32">2015-10-09 11:32</time></a></p>
+        </div>
+    </header><div class="e-content entry-content">
+    <div>
+<h3>Introduction</h3>
+<p>大多数程序包含大量的逻辑和点点文本数据，编程语言被设计成适合做这样的 事情。但是有些编程任务只需要点点逻辑和大量的文本数据，对于这样的任务， 我们希望有一个更合适工具来做。模板引擎就是这样一个工具。在这一章，我 们会开发一个简单的模板引擎。</p>
+<p>一个最常见的需要处理多文本数据的例子是web应用。web应用的一个重要部分 是为浏览器生成HTML网页。很少网页是完全静态的，它们至少包含一些动态数 据，比如用户名。一般情况下，网页有很大一部分动态数据：产品列表，好友消息更 新等等。</p>
+<p>同时，每个HTML网页包含大量的静态文本。并且这些网页很大，有成千上万个 字节。这时，web开发者就有一个问题要解决：怎样才能最有效的生成同时包 含静态和动态数据的长字符串？随之而来的问题，这些静态文本其实是前端工 程师写的HTML，他们想希望用自己熟悉的方法处理这些HTML。</p>
+<p>为了说明，让我们假设想生成这样一个简单的HTML</p>
+<pre class="code literal-block"><span></span><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Welcome, Charlie!<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Products:<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Apple: $1.00<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Fig: $1.50<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Pomegranate: $3.25<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</pre>
+
+
+<p>这里，用户名会是动态的，产品的名称和数量也是动态的，甚至产品的数量也 不是固定的：在其他情况，可能有更多或更少的产品。</p>
+<p>一个简单的方法生成这样的网页是把这样的字符串作为常量写入我们的代码中， 然后把它们拼在一起完成这个网页。动态数据使用类似字符替换的方法插入进 去。有些动态数据是重复的，比如产品列表，这就是说我们会有一些重复的 HTML段，所以我们要单独的去处理它们再和其他的HTML合并起来。</p>
+<p>使用这种方法生成我们的HTML的代码会像这样</p>
+<pre class="code literal-block"><span></span><span class="c1"># The main HTML for the whole page.</span>
+<span class="n">PAGE_HTML</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">&lt;p&gt;Welcome, {name}!&lt;/p&gt;</span>
+<span class="s2">&lt;p&gt;Products:&lt;/p&gt;</span>
+<span class="s2">&lt;ul&gt;</span>
+<span class="s2">{products}</span>
+<span class="s2">&lt;/ul&gt;</span>
+<span class="s2">"""</span>
+
+<span class="c1"># The HTML for each product displayed.</span>
+<span class="n">PRODUCT_HTML</span> <span class="o">=</span> <span class="s2">"&lt;li&gt;{prodname}: {price}&lt;/li&gt;</span><span class="se">\n</span><span class="s2">"</span>
+
+<span class="k">def</span> <span class="nf">make_page</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">products</span><span class="p">):</span>
+    <span class="n">product_html</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="k">for</span> <span class="n">prodname</span><span class="p">,</span> <span class="n">price</span> <span class="ow">in</span> <span class="n">products</span><span class="p">:</span>
+        <span class="n">product_html</span> <span class="o">+=</span> <span class="n">PRODUCT_HTML</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">prodname</span><span class="o">=</span><span class="n">prodname</span><span class="p">,</span> <span class="n">price</span><span class="o">=</span><span class="n">format_price</span><span class="p">(</span><span class="n">price</span><span class="p">))</span>
+    <span class="n">html</span> <span class="o">=</span> <span class="n">PAGE_HTML</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">username</span><span class="p">,</span> <span class="n">products</span><span class="o">=</span><span class="n">product_html</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">html</span>
+</pre>
+
+
+<p>这样可以，但是我们搞得乱七八糟，HTML成了我们代码里的字符串常量，我们 很难看出这个HTML的结构，因为它被分成一段一段的了。数据格式的细节迷失 在python代码中。并且，为了修改HTML，我们的前端工程师需要修改python代 码。想象一下，如果这个网页比现在这个复杂10倍（或者100倍）我们代码会 是什么样子。</p>
+<h3>Templates</h3>
+<p>更好的方法是用模板来生成HTML，或者说把HTML写成一个模板，这样绝大部分 就是静态HTML，再加上一点使用特别符号的动态内容。现在我们的toy网页就成了 下面这样的模板</p>
+<pre class="code literal-block"><span></span><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Welcome, {{user_name}}!<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Products:<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+{% for product in product_list %}
+    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>{{ product.name }}:
+        {{ product.price|format_price }}<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+{% endfor %}
+<span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</pre>
+
+
+<p>这里我们关注的是HTML文本，另外加上一点逻辑。对比现在以文本为中心的方 法和之前以逻辑为中心的方法，我们之前的程序大部分是python代码，这里我 的程序大部分是静态的HTML标签。</p>
+<p>在模板中采用的以静态为主的风格和大多数编程语言的工作方式相反。比如 python，几乎所有的源文件都是可执行代码，如果你需要静态文本，你就要把 它嵌到字符串中。</p>
+<pre class="code literal-block"><span></span><span class="k">def</span> <span class="nf">hello</span><span class="p">():</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">"Hello world!"</span><span class="p">)</span>
+
+<span class="n">hello</span><span class="p">()</span>
+</pre>
+
+
+<p>当python读取这个源文件时，它把<code>def hello():</code>这样的文本解释成要被执行 的指令，而在双引号中的字符 <code>print("Hello, world!")</code>被指示成文本。这 就是编程语言如何工作的：动态的，嵌入点点静态内容。静态的内容通过双引号来指示。</p>
+<p>一个模板语言把这个过程反过来了，大部分是静态文本，用特殊的符号指示动态 内容。</p>
+<p><code>&lt;p&gt;Welcome, {{user_name}}!&lt;/p&gt;</code></p>
+<p>这里的文本会直接出现在最终的HTML中，直到遇到 <code>{{</code> 符号，它指示转换到 动态模式，这里<code>user_name</code>变量就会被替换。</p>
+<p>字符串格式化函数，比如python的 <code>"foo = {foo}!".format(foo=17)</code>就是一 个在字符串并插入数据创建文本的微型语言的例子。模板更进一步，加上逻辑结构，比如条件，循环。这只是在程度上不同。</p>
+<p>把这些文件叫做模板是因为它们被用来生成大量结构相似的网页，只是细节不同。</p>
+<p>为了在程序中使用HTML模板，我们需要一个模板引擎(template engine)：一个需要两个参数的函数，一个是描述页面结构和内容的静态模板，另一个是包含要插入到模板中的动态数据的上下文。模板引擎把模板和上下文结合起来生成完整的HTML字符串，它的任务是解释模板，用真正的数据替换动态的部分。</p>
+<p>顺便说一下，HTML对模板引擎并没有什么特别的地方，它可以用来生成任何文本数据。比如，它可以被用来生成纯文本的email信息。但是它通常用于HTML，或许碰巧还有些专门对HTML的特性，比如转义，这个特性让你不用担心插入了对HTML有特殊含义的字符。</p>
+<h3>Supported Syntax</h3>
+<p>不同的模板引擎在语法支持上各有不同。我们的模板语法基于Django，一个非常流行的网站框架。因为我们的引擎使用python实现的，一些python的概念会出现在我们的语法中。在上一节的HTML中我们已经看到了一些语法，这里是我们语法的小总结。</p>
+<p>上下文中的数据插入到两个大括号中</p>
+<p><code>&lt;p&gt;Welcome, {{user_name}}!&lt;/p&gt;</code></p>
+<p>在模板中可用的数据在上下文中，后面我们详细的讲到。</p>
+<p>我们的模板引擎提供了一个简单自由的语法访问数据中的元素。在python中，这些表达式有不同的效果：</p>
+<pre class="code literal-block"><span></span><span class="nb">dict</span><span class="p">[</span><span class="s2">"key"</span><span class="p">]</span>
+<span class="n">obj</span><span class="o">.</span><span class="n">attr</span>
+<span class="n">obj</span><span class="o">.</span><span class="n">method</span><span class="p">()</span>
+</pre>
+
+
+<p>在我们的语法中，所有这些操作都用点号表示。</p>
+<pre class="code literal-block"><span></span>dict.key
+obj.attr
+obj.method
+</pre>
+
+
+<p>这个点号会访问对象的属性，字典里的值，如果结果是可调用的，那么就自动调用它。这与python代码不同，你需要不同的语法完成不同的操作。在我们简单的语法下会是这样：</p>
+<p><code>&lt;p&gt;The price is: {{product.price}}, with a {{product.discount}}% discount.&lt;/p&gt;</code></p>
+<p>点号可以在一个值上多次使用以访问元素链。</p>
+<p>你还可以使用帮助函数，把它们叫做过滤器，用管道符号调用</p>
+<p><code>&lt;p&gt;Short name: {{story.subject|slugify|lower}}&lt;/p&gt;</code></p>
+<p>制作有趣的网页通常需要一点逻辑，所以我们有条件表达式：</p>
+<pre class="code literal-block"><span></span>{% if user.is_logged_in %}
+    <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Welcome, {{ user.name }}!<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+{% else %}
+    <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">"/login"</span><span class="p">&gt;</span>Log in <span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+{% endif %}
+</pre>
+
+
+<p>循环可以让我们在网页里包含数据集合：</p>
+<pre class="code literal-block"><span></span><span class="nt">&lt;p&gt;</span>Products:<span class="nt">&lt;/p&gt;</span>
+<span class="nt">&lt;ul&gt;</span>
+<span class="cp">{%</span> <span class="k">for</span> <span class="nv">product</span> <span class="k">in</span> <span class="nv">product_list</span> <span class="cp">%}</span>
+    <span class="nt">&lt;li&gt;</span><span class="cp">{{</span> <span class="nv">product.name</span> <span class="cp">}}</span>: <span class="cp">{{</span> <span class="nv">product.price</span><span class="o">|</span><span class="nf">format_price</span> <span class="cp">}}</span><span class="nt">&lt;/li&gt;</span>
+<span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span>
+<span class="nt">&lt;/ul&gt;</span>
+</pre>
+
+
+<p>和其他的编程语言一样，条件和循环可以嵌套使用。</p>
+<p>最后，我们可以对模板注释</p>
+<p><code>{# This is the best template ever! #}</code></p>
+<h3>Implementation Approaches</h3>
+<p>粗略的说，模板引擎有两个主要的部分，解析和呈现。</p>
+<p>对于模板的呈现包括下面这几个部分： 
+- 管理动态上下文，它是数据的来源 
+- 执行逻辑元素
+- 执行数据访问和过滤器</p>
+<p>解析模板后应该传递什么给下一步是个关键问题。解析模板输出什么？这里有两个选择：我们称它们为<code>解释</code>(interpretation) 和<code>编译</code>(complilation), 这是借用其他语言实现的术语。</p>
+<p>使用解释模式，解析产出一个代表模板结构的数据结构，呈现部分会一步一步的处理这个数据结构，组合它发现的文本数据。作为一个真实的例子，Django的模板引擎就是使用这种方法。</p>
+<p>编译模式，解析后直接产出某种形式的可执行代码，呈现部分就会执行这个代码产出结果。Jinja2和Mako是使用编译方法的模板引擎的例子。</p>
+<p>我们的模板引擎使用编译的方式实现。我们把模板编译成python代码，执行它，产生结果。</p>
+<p>这里描述的模板引擎起源于covery.py的一部分，它用来生成HTML报告，在coverage.py中只有几个模板，它们被频繁的使用，总之，如果模板被编译成python代码的话程序会更快，即使编译过程有点复杂。编译一次，运行多次。这会比解释一个数据结构快很多倍。</p>
+<p>编译过程有点复杂，但不是你想象的那么难。并且可能有开发者告诉你一个自己能写程序的程序会更有趣些。</p>
+<p>我们的模板编译器是一个通用技术的小例子，叫做代码生成器。代码生成是很多强大灵活的工具的基础，包括语言编译器。代码生成器可能非常复杂，但是它会是你工具箱里的一个有用的工具。</p>
+<h3>Compiling to Python</h3>
+</div>
+    </div>
+    </article>
+</div>
+
+        <nav class="postindexpager"><ul class="pager">
+<li class="previous">
+                <a href="." rel="prev">Newer posts</a>
+            </li>
+        </ul></nav>
+</div>
+        <!--End of body content-->
+
+        <footer id="footer">
+            Contents © 2018         <a href="mailto:845767657@qq.com">Tao Qingyun</a> - Powered by         <a href="https://getnikola.com" rel="nofollow">Nikola</a>         
+            
+        </footer>
+</div>
+</div>
+
+
+            <script src="assets/js/all-nocdn.js"></script><script>$('a.image-reference:not(.islink) img:not(.islink)').parent().colorbox({rel:"gal",maxWidth:"100%",maxHeight:"100%",scalePhotos:true});</script><!-- fancy dates --><script>
+    moment.locale("en");
+    fancydates(0, "YYYY-MM-DD HH:mm");
+    </script><!-- end fancy dates -->
+</body>
+</html>

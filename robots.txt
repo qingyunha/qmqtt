@@ -1,0 +1,4 @@
+Sitemap: http://ls-a.me/sitemapindex.xml
+
+User-Agent: *
+Host: ls-a.me

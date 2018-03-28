@@ -1,0 +1,3 @@
+[console_scripts]
+qmqtt = qmqtt.__main__:main
+

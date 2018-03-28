@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="../assets/xml/rss.xsl" media="all"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Qing Yun (Posts about memcached)</title><link>http://ls-a.me/</link><description></description><atom:link href="http://ls-a.me/categories/memcached.xml" rel="self" type="application/rss+xml"></atom:link><language>en</language><copyright>Contents © 2018 &lt;a href="mailto:845767657@qq.com"&gt;Tao Qingyun&lt;/a&gt; </copyright><lastBuildDate>Mon, 26 Mar 2018 13:39:23 GMT</lastBuildDate><generator>Nikola (getnikola.com)</generator><docs>http://blogs.law.harvard.edu/tech/rss</docs><item><title>memcached-1.2.0 源码解读</title><link>http://ls-a.me/posts/read-memcached-120/</link><dc:creator>Tao Qingyun</dc:creator><description>&lt;div&gt;&lt;p&gt;&lt;em&gt;关键词&lt;/em&gt; ： libevent，状态机，内存分配，hash表&lt;/p&gt;
+&lt;hr&gt;
+&lt;p&gt;memcached是一个免费开源的高性能分布式(由客户端提供)对象缓存系统。这篇将对memcached 1.2.0的源码的进行一点解读，这是我能找到的最早的发行版。协议定义在&lt;code&gt;doc/protocol.txt&lt;/code&gt;下，代码量在3500行左右：&lt;/p&gt;
+&lt;pre class="code literal-block"&gt;&lt;span&gt;&lt;/span&gt;$ wc *.&lt;span class="o"&gt;[&lt;/span&gt;ch&lt;span class="o"&gt;]&lt;/span&gt;
+   &lt;span class="m"&gt;186&lt;/span&gt;    &lt;span class="m"&gt;844&lt;/span&gt;   &lt;span class="m"&gt;5912&lt;/span&gt; assoc.c
+    &lt;span class="m"&gt;71&lt;/span&gt;    &lt;span class="m"&gt;328&lt;/span&gt;   &lt;span class="m"&gt;1963&lt;/span&gt; config.h
+    &lt;span class="m"&gt;70&lt;/span&gt;    &lt;span class="m"&gt;370&lt;/span&gt;   &lt;span class="m"&gt;2649&lt;/span&gt; daemon.c
+   &lt;span class="m"&gt;322&lt;/span&gt;   &lt;span class="m"&gt;1056&lt;/span&gt;   &lt;span class="m"&gt;8560&lt;/span&gt; items.c
+  &lt;span class="m"&gt;2282&lt;/span&gt;   &lt;span class="m"&gt;7820&lt;/span&gt;  &lt;span class="m"&gt;68519&lt;/span&gt; memcached.c
+   &lt;span class="m"&gt;278&lt;/span&gt;   &lt;span class="m"&gt;1379&lt;/span&gt;   &lt;span class="m"&gt;9781&lt;/span&gt; memcached.h
+   &lt;span class="m"&gt;356&lt;/span&gt;   &lt;span class="m"&gt;1392&lt;/span&gt;  &lt;span class="m"&gt;10717&lt;/span&gt; slabs.c
+  &lt;span class="m"&gt;3565&lt;/span&gt;  &lt;span class="m"&gt;13189&lt;/span&gt; &lt;span class="m"&gt;108101&lt;/span&gt; total
+&lt;/pre&gt;
+
+
+&lt;p&gt;编译需要安装libevent依赖和autotools工具。&lt;/p&gt;
+&lt;h3&gt;libevent&lt;/h3&gt;
+&lt;p&gt;libevent提供了一种当文件描述符的事件(读，写)发生时执行回调函数的机制，也支持信号和超时回调。memcached用的是libevent的1.x版本，使用了这样几个API：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;struct event_base *event_init(void)&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;void event_set(struct event *, int, short, void(*)(int, short, void *), void *)&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;int event_add(struct event *ev, const struct timeval *timeout)&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;int event_del(struct event *)&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;int event_loop(int)&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;memcached的&lt;code&gt;main&lt;/code&gt;函数首先调用&lt;code&gt;event_init&lt;/code&gt;，这是使用libevent的必须步骤。接着&lt;code&gt;main&lt;/code&gt;函数创建监听socket，并为其描述符的读事件设置回调函数。另外还添加了两个周期性事件：更新当前时间，一秒一次；删除items，5秒一次。最后&lt;code&gt;event_loop&lt;/code&gt;被调用，事件循环正式开始。 随着连接的建立、协议的通讯，事件通过&lt;code&gt;event_add&lt;/code&gt;和&lt;code&gt;event_del&lt;/code&gt;动态的添加和删除。&lt;/p&gt;
+&lt;h3&gt;状态转化&lt;/h3&gt;
+&lt;p&gt;memcached将一次链接的所有信息都封装在结构体&lt;code&gt;struct conn&lt;/code&gt;中，包括socket的文件描述符，事件，当前状态，输入输出缓存，items等。部分结构如下&lt;/p&gt;
+&lt;pre class="code literal-block"&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;typedef&lt;/span&gt; &lt;span class="k"&gt;struct&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="kt"&gt;int&lt;/span&gt;    &lt;span class="n"&gt;sfd&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kt"&gt;int&lt;/span&gt;    &lt;span class="n"&gt;state&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="k"&gt;struct&lt;/span&gt; &lt;span class="n"&gt;event&lt;/span&gt; &lt;span class="n"&gt;event&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+    &lt;span class="kt"&gt;char&lt;/span&gt;   &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="n"&gt;rbuf&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;   &lt;span class="cm"&gt;/* buffer to read commands into */&lt;/span&gt;
+
+    &lt;span class="kt"&gt;char&lt;/span&gt;   &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="n"&gt;wbuf&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+    &lt;span class="kt"&gt;char&lt;/span&gt;   &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="n"&gt;ritem&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;  &lt;span class="cm"&gt;/* when we read in an item's value, it goes here */&lt;/span&gt;
+
+
+    &lt;span class="kt"&gt;void&lt;/span&gt;   &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;     &lt;span class="cm"&gt;/* for commands set/add/replace  */&lt;/span&gt;
+    &lt;span class="kt"&gt;int&lt;/span&gt;    &lt;span class="n"&gt;item_comm&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="cm"&gt;/* which one is it: set/add/replace */&lt;/span&gt;
+
+
+    &lt;span class="cm"&gt;/* data for the mwrite state */&lt;/span&gt;
+    &lt;span class="k"&gt;struct&lt;/span&gt; &lt;span class="n"&gt;iovec&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="n"&gt;iov&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kt"&gt;int&lt;/span&gt;    &lt;span class="n"&gt;iovsize&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;   &lt;span class="cm"&gt;/* number of elements allocated in iov[] */&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt; &lt;span class="n"&gt;conn&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;/pre&gt;
+
+
+&lt;p&gt;conn结构中的state记录这个连接的当前状态，一共定义了7个状态。&lt;/p&gt;
+&lt;pre class="code literal-block"&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;enum&lt;/span&gt; &lt;span class="n"&gt;conn_states&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="n"&gt;conn_listening&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;  &lt;span class="cm"&gt;/* the socket which listens for connections */&lt;/span&gt;
+    &lt;span class="n"&gt;conn_read&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;       &lt;span class="cm"&gt;/* reading in a command line */&lt;/span&gt;
+    &lt;span class="n"&gt;conn_write&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;      &lt;span class="cm"&gt;/* writing out a simple response */&lt;/span&gt;
+    &lt;span class="n"&gt;conn_nread&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;      &lt;span class="cm"&gt;/* reading in a fixed number of bytes */&lt;/span&gt;
+    &lt;span class="n"&gt;conn_swallow&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;    &lt;span class="cm"&gt;/* swallowing unnecessary bytes w/o storing */&lt;/span&gt;
+    &lt;span class="n"&gt;conn_closing&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;    &lt;span class="cm"&gt;/* closing this connection */&lt;/span&gt;
+    &lt;span class="n"&gt;conn_mwrite&lt;/span&gt;      &lt;span class="cm"&gt;/* writing out many items sequentially */&lt;/span&gt;
+&lt;span class="p"&gt;};&lt;/span&gt;
+&lt;/pre&gt;
+
+
+&lt;p&gt;其中&lt;code&gt;conn_listening&lt;/code&gt;只属于监听socket，不会改变。当新连接建立时，分配一个conn结构并初始化为&lt;code&gt;conn_read&lt;/code&gt;状态。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;set|add|replace &amp;lt;key&amp;gt; &amp;lt;flags&amp;gt; &amp;lt;exptime&amp;gt; &amp;lt;bytes&amp;gt;\r\n&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;这一类命令分为2部分，&lt;code&gt;text line&lt;/code&gt;和&lt;code&gt;unstructured data&lt;/code&gt;
+当memcached接收完&lt;code&gt;text line&lt;/code&gt;后，&lt;code&gt;conn_read&lt;/code&gt;--&amp;gt;&lt;code&gt;conn_nread&lt;/code&gt;，等待读取n个字节长的&lt;code&gt;unstructured data&lt;/code&gt;，n由&lt;code&gt;text line&lt;/code&gt;中的bytes指定。读完之后，&lt;code&gt;conn_nread&lt;/code&gt;--&amp;gt;&lt;code&gt;conn_write&lt;/code&gt;，向客户端发送一行回复信息。最后conn再次变为&lt;code&gt;conn_read&lt;/code&gt;等待命令输入。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;get &amp;lt;key&amp;gt;*\r\n&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;get命令只有一个&lt;code&gt;text line&lt;/code&gt;，后面可以有多个key。当memcached读完这条命令后，&lt;code&gt;conn_read&lt;/code&gt;--&amp;gt;&lt;code&gt;conn_mwrite&lt;/code&gt;，返回多个items。&lt;/p&gt;
+&lt;h3&gt;hashtable&lt;/h3&gt;
+&lt;p&gt;memcached的hashtable是大小为&lt;code&gt;2**20&lt;/code&gt;的&lt;code&gt;item *&lt;/code&gt;的数组。至于hash函数的算法就略过了，它共定义了3个API：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;item *assoc_find(char *key)&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;int assoc_insert(char *key, item *it)&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;void assoc_delete(char *key)&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;顾名思义。&lt;/p&gt;
+&lt;h3&gt;内存分配&lt;/h3&gt;
+&lt;p&gt;&lt;em&gt;Not Implement&lt;/em&gt;&lt;/p&gt;
+&lt;h3&gt;I/O&lt;/h3&gt;
+&lt;p&gt;memcached支持TCP，UDP，UNIX socket，读直接使用read(2)，写使用sendmsg(2)，并且&lt;code&gt;struct iovec&lt;/code&gt;是动态分配，保存在&lt;code&gt;conn&lt;/code&gt;结构中。&lt;/p&gt;&lt;/div&gt;</description><category>memcached</category><guid>http://ls-a.me/posts/read-memcached-120/</guid><pubDate>Thu, 18 Aug 2016 12:21:26 GMT</pubDate></item></channel></rss>
